@@ -1,0 +1,32 @@
+{
+  "name": "datomish-user-agent-service",
+  "private": "true",
+  "engines": {
+    "node": "6.x.x"
+  },
+  "version": "0.1.0-SNAPSHOT",
+  "description": "A Tofino User Agent Service built on top of Datomish.",
+  "dependencies": {
+    "express": "^4.14.0",
+    "promise-sqlite": "1.2.1",
+    "source-map-support": "ncalexan/node-source-map-support#fileUrls-plus",
+    "sqlite3": "mossop/node-sqlite3#v3.1.4.1",
+    "swagger-tools": "^0.10.1",
+    "thenify-all": "^1.6.0",
+    "ws": "1.1.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mozilla/datomish-user-agent-service.git"
+  },
+  "author": "Mozilla Corporation",
+  "license": "MPL-2.0",
+  "bugs": {
+    "url": "https://github.com/mozilla/datomish-user-agent-service/issues"
+  },
+  "homepage": "https://github.com/mozilla/datomish-user-agent-service#readme",
+  "main": "./app.js",
+  "files": [
+    "app.js"
+  ]
+}
