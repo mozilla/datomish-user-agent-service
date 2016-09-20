@@ -65,18 +65,25 @@
     (is (= nil nil))
     ))
 
-;; (deftest-async test-heartbeat
-;;   (let [server (core/server 3001)]
-;;     (try
-;;       ;; (is (= nil (js/fetch)))
-;;       (is (= (js->clj (<? (<get "http://localhost:3001/__heartbeat__"))) {}))
-;;       (finally (.close server)))))
-
-(deftest-async test-session-start
+(deftest-async test-heartbeat
   (let [server (core/server 3002)]
     (try
-      (is (= (<? (<post "http://localhost:3002/v1/session/start" {:scope 0})) {:session 65552}))
+      (is (= (<? (<get "http://localhost:3002/__heartbeat__")) {}))
+      (finally (.close server)))))
 
-      (is (= (<? (<post "http://localhost:3002/v1/session/end" {:session 65552})) {}))
+(deftest-async test-session
+  (let [server (core/server 3002)]
+    (try
+      (let [{s1 :session} (<? (<post "http://localhost:3002/v1/session/start" {}))
+            {s2 :session} (<? (<post "http://localhost:3002/v1/session/start" {:scope s1}))]
+        (is (number? s1))
+        (is (number? s2))
+        (is (= s1 (dec s2)))
+
+        (is (= (<? (<post "http://localhost:3002/v1/session/end" {:session s1})) {}))
+        (is (= (<? (<post "http://localhost:3002/v1/session/end" {:session s2})) {}))
+
+        ;; TODO: 404 the second time through.
+        (is (= (<? (<post "http://localhost:3002/v1/session/end" {:session s1})) {})))
 
       (finally (.close server)))))
