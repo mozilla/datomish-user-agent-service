@@ -34,6 +34,13 @@
 
 (def router (. express Router))
 
+;; TODO: figure out how to give JSON 404 errors.
+;; (defn- error-handler [err req res next]
+;;   (js/console.log "error-handler" err)
+;;   (.send (.status res 500)))
+
+;; (.use router error-handler)
+
 (doto app
   (.use (.json bodyParser))
   (.use (expressValidator))
@@ -66,16 +73,14 @@
 (. router (post "/session/start"
                 (auto-caught-route-error
                   (fn [req]
-                    (->
-                      req
-                      (.checkBody "scope")
-                      (.optional)
-                      (.isInt))
-                    (->
-                      req
-                      (.checkBody "ancestor")
-                      (.optional)
-                      (.isInt))
+                    (-> req
+                        (.checkBody "scope")
+                        (.optional)
+                        (.isInt))
+                    (-> req
+                        (.checkBody "ancestor")
+                        (.optional)
+                        (.isInt))
                     )
                   (fn [req res]
                     (go-pair
@@ -87,17 +92,52 @@
 (. router (post "/session/end"
                 (auto-caught-route-error
                   (fn [req]
-                    (->
-                      req
-                      (.checkBody "session")
-                      (.isInt)
-                      (.notEmpty))
+                    (-> req
+                        (.checkBody "session")
+                        (.notEmpty)
+                        (.isInt))
                     )
                   (fn [req res]
                     (go-pair
-                      (let [session (<? (api/<end-session (<? app-state)
-                                                          {:session (-> req .-body .-session)}))]
+                      (let [_ (<? (api/<end-session (<? app-state)
+                                                    {:session (-> req .-body .-session)}))]
                         (. res (json (clj->js {})))))))))
+
+(. router (post "/visits"
+                (auto-caught-route-error
+                  (fn [req]
+                    (-> req
+                        (.checkBody "url")
+                        (.notEmpty))
+                    (-> req
+                        (.checkBody "title")
+                        (.optional))
+                    (-> req
+                        (.checkBody "session")
+                        (.notEmpty)
+                        (.isInt))
+                    )
+                  (fn [req res]
+                    (go-pair
+                      (let [_ (<? (api/<add-visit (<? app-state)
+                                                  {:url (-> req .-body .-url)
+                                                   :title (-> req .-body .-title)
+                                                   :session (-> req .-body .-session)}))]
+                        (. res (json (clj->js {})))))))))
+
+(. router (get "/visits"
+               (auto-caught-route-error
+                 (fn [req]
+                   (-> req
+                       (.checkQuery "limit")
+                       (.notEmpty)
+                       (.isInt))
+                   )
+                 (fn [req res]
+                   (go-pair
+                     (let [results (<? (api/<visited (d/db (<? app-state)) ;; TODO -- unify on conn over db?
+                                                     {:limit (int (-> req .-query .-limit))}))]
+                       (. res (json (clj->js {:pages results})))))))))
 
 ;; (def -main 
 ;;   (fn []

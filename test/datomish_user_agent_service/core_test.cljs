@@ -27,6 +27,9 @@
 
 (nodejs/require "isomorphic-fetch")
 
+;; TODO: consider doing this locally.
+(cljs-promises.async/extend-promises-as-pair-channels!)
+
 (defn <fetch
   ([url]
    (<fetch url {}))
@@ -37,20 +40,15 @@
                     :Content-Type "application/json"}}
 
          options
-         (merge defaults options)
+         (merge defaults options)]
 
-         ->json-body
-         (fn [res]
-           (if-not (.-ok res)
-             (datomish.util/raise "Failed to fetch" {:url url :options options :res res}) ;; Not helpful, since res.body is a promise.
-             (.json res)))]
-     (cljs-promises.async/pair-port
-       (->
-         (js/fetch url (clj->js options))
-         (.then ->json-body)
-         (.catch (fn [e] (datomish.util/raise "Failed to fetch" {:url url :options options :error e})))
-         (.then #(js->clj % :keywordize-keys true))
-         )))))
+     (go-pair
+       (let [res  (<? (js/fetch url (clj->js options)))
+             body (<? (.json res))
+             ]
+         (if (.-ok res)
+           (js->clj body :keywordize-keys true)
+           (datomish.util/raise (str "Failed to " (:method options)) {:url url :options options :body body :res res})))))))
 
 (defn <post
   ([url body]
@@ -60,10 +58,9 @@
 
 (def <get <fetch)
 
-(deftest-async b-test
-  (testing "FIXME, I fail."
-    (is (= nil nil))
-    ))
+(defn- dissoc-visits [pages]
+  ;; TODO: verify timestamps are microseconds.
+  (map #(dissoc % :lastVisited) pages))
 
 (deftest-async test-heartbeat
   (let [server (core/server 3002)]
@@ -86,4 +83,30 @@
         ;; TODO: 404 the second time through.
         (is (= (<? (<post "http://localhost:3002/v1/session/end" {:session s1})) {})))
 
+      (finally (.close server)))))
+
+(deftest-async test-visits
+  (let [server (core/server 3002)]
+    (try
+      (let [{s :session} (<? (<post "http://localhost:3002/v1/session/start" {}))]
+        ;; No title.
+        (is (= (<? (<post "http://localhost:3002/v1/visits" {:session s
+                                                             :url "https://reddit.com/"}))
+               {}))
+        ;; With title.
+        (is (= (<? (<post "http://localhost:3002/v1/visits" {:session s
+                                                             :url "https://www.mozilla.org/en-US/firefox/new/"
+                                                             :title "Download Firefox - Free Web Browser"}))
+               {}))
+        ;; TODO: 400 with no URL or no session (or invalid URL?).
+
+        (is (= (dissoc-visits (:pages (<? (<get "http://localhost:3002/v1/visits?limit=2"))))
+               [{:uri "https://www.mozilla.org/en-US/firefox/new/",
+                 :title "Download Firefox - Free Web Browser"}
+                {:uri "https://reddit.com/",
+                 :title ""}]))
+
+        (is (= (dissoc-visits (:pages (<? (<get "http://localhost:3002/v1/visits?limit=1"))))
+               [{:uri "https://www.mozilla.org/en-US/firefox/new/",
+                 :title "Download Firefox - Free Web Browser"}])))
       (finally (.close server)))))
