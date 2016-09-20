@@ -188,6 +188,7 @@
       [?id :session/endReason ?endReason ?tx]
       [?tx :db/txInstant ?ts]]))
 
+;; TODO: implement unstar.
 (defn <star-page [conn {:keys [url uri title session]}]
   (let [page (d/id-literal :db.part/user -1)]
     (d/<transact!
@@ -201,6 +202,7 @@
           :page/url     (or uri url)
           :page/starred true})])))
 
+;; TODO: limit.
 (defn <starred-pages [db]
   (go-pair
     (->>
@@ -217,7 +219,7 @@
             ]))
 
       (map (fn [[page uri title starredOn]]
-             {:page page :uri uri :title title :starredOn starredOn})))))
+             {:uri uri :title title})))))
 
 (defn <save-page [conn {:keys [url uri title session excerpt content]}]
   (let [save (d/id-literal :db.part/user -1)

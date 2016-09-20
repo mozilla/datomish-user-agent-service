@@ -139,6 +139,74 @@
                                                      {:limit (int (-> req .-query .-limit))}))]
                        (. res (json (clj->js {:pages results})))))))))
 
+(. router (post "/stars/:url"
+                (auto-caught-route-error
+                  (fn [req]
+                    (-> req
+                        (.checkParams "url")
+                        (.notEmpty))
+                    (-> req
+                        (.checkBody "title")
+                        (.optional))
+                    (-> req
+                        (.checkBody "session")
+                        (.notEmpty)
+                        (.isInt))
+                    )
+                  (fn [req res]
+                    (go-pair
+                      (let [_ (<? (api/<star-page (<? app-state)
+                                                  {:url (-> req .-params .-url)
+                                                   :title (-> req .-body .-title) ;; TODO: allow no title.
+                                                   ;; TODO: coerce session to integer.
+                                                   :session (int (-> req .-body .-session))}))]
+                        ;; TODO: dispatch bookmark diffs to WS.
+                        (. res (json (clj->js {})))))))))
+
+;; (. router (delete "/stars/:url"
+;;                   (auto-caught-route-error
+;;                     (fn [req]
+;;                       (-> req
+;;                           (.checkParams "url")
+;;                           (.notEmpty))
+;;                       (-> req
+;;                           (.checkBody "session")
+;;                           (.notEmpty)
+;;                           (.isInt))
+;;                       )
+;;                     (fn [req res]
+;;                       (go-pair
+;;                         (let [_ (<? (api/<star-page (<? app-state)
+;;                                                     {:url (-> req .-params .-url)
+;;                                                      ;; TODO: coerce session to integer.
+;;                                                      :session (-> req .-body .-session)}))]
+;;                           ;; TODO: dispatch bookmark diffs to WS.
+;;                           (. res (json (clj->js {})))))))))
+
+(. router (get "/stars"
+               (auto-caught-route-error
+                 (fn [req]
+                   )
+                 (fn [req res]
+                   (go-pair
+                     (let [results (<? (api/<starred-pages (d/db (<? app-state))))]
+                       (. res (json (clj->js {:stars results})))))))))
+
+(. router (get "/recentStars"
+               (auto-caught-route-error
+                 (fn [req]
+                   (-> req
+                       (.checkQuery "limit")
+                       (.notEmpty)
+                       (.isInt))
+                   )
+                 (fn [req res]
+                   (go-pair
+                     (let [results (<? (api/<starred-pages (d/db (<? app-state)) ;; TODO -- unify on conn over db?
+                                                           ;; {:limit (int (-> req .-query .-limit))}
+                                                           ))]
+                       (. res (json (clj->js {:stars results})))))))))
+
 ;; (def -main 
 ;;   (fn []
 ;;     ;; This is the secret sauce. you want to capture a reference to 

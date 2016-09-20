@@ -110,3 +110,27 @@
                [{:uri "https://www.mozilla.org/en-US/firefox/new/",
                  :title "Download Firefox - Free Web Browser"}])))
       (finally (.close server)))))
+
+(deftest-async test-stars
+  (let [server (core/server 3002)]
+    (try
+      (let [{s :session} (<? (<post "http://localhost:3002/v1/session/start" {}))]
+        ;; TODO: Allow no title.
+        (is (= (<? (<post (str "http://localhost:3002/v1/stars/" (js/encodeURIComponent "https://reddit.com/"))
+                          {:title "reddit - the front page of the internet"
+                           :session s}))
+               {}))
+        ;; With title.
+        (is (= (<? (<post (str "http://localhost:3002/v1/stars/" (js/encodeURIComponent "https://www.mozilla.org/en-US/firefox/new/"))
+                          {:title "Download Firefox - Free Web Browser"
+                           :session s}))
+               {}))
+
+        ;; TODO: accept limit, order by starredOn descending (like /visits).
+        (is (= (set (dissoc-visits (:stars (<? (<get "http://localhost:3002/v1/stars")))))
+               #{{:uri "https://www.mozilla.org/en-US/firefox/new/",
+                  :title "Download Firefox - Free Web Browser"}
+                 {:uri "https://reddit.com/",
+                  :title "reddit - the front page of the internet"}
+                 })))
+      (finally (.close server)))))
