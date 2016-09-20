@@ -1,25 +1,26 @@
 (defproject datomish-user-agent-service "0.1.0-SNAPSHOT"
-  :description "FIXME: write this!"
-  :url "http://example.com/FIXME"
-  :license {:name "Eclipse Public License"
-            :url "http://www.eclipse.org/legal/epl-v10.html"}
+  :description "A Tofino User Agent Service built on top of Datomish."
+  :url "https://github.com/mozilla/datomish-user-agent-service"
+  :license {:name "Mozilla Public License Version 2.0"
+            :url  "https://github.com/mozilla/datomish-user-agent-service/blob/master/LICENSE"}
+  :dependencies [[org.clojure/clojurescript "1.9.227"]
+                 [org.clojure/clojure "1.8.0"]
+                 [org.clojure/core.async "0.2.391"]
+                 [jamesmacaulay/cljs-promises "0.1.0"]
+                 [datomish "0.1.0-SNAPSHOT"]]
 
   :min-lein-version "2.6.1"
-
-  :dependencies [[org.clojure/clojure "1.8.0"]
-                 [org.clojure/clojurescript "1.9.89"]
-                 [org.clojure/core.async "0.2.385"
-                  :exclusions [org.clojure/tools.reader]]]
 
   :plugins [[lein-figwheel "0.5.4-7"]
             [lein-cljsbuild "1.1.3" :exclusions [[org.clojure/clojure]]]]
 
   :source-paths ["src"]
 
-  :clean-targets ^{:protect false} ["resources/public/js/compiled" "target"]
+  :clean-targets ^{:protect false} ["target"]
 
   :cljsbuild {:builds
-              [{:id "dev"
+              [
+               {:id "dev"
                 :source-paths ["src"]
 
                 ;; the presence of a :figwheel configuration here
@@ -35,20 +36,37 @@
 
                 :compiler {:main datomish-user-agent-service.core
                            :target :nodejs
-                           :asset-path "resources/public/js/compiled/out"
-                           :output-to "resources/public/js/compiled/datomish_user_agent_service.js"
-                           :output-dir "resources/public/js/compiled/out"
+                           :asset-path "target/dev"
+                           :output-to "target/dev/datomish_user_agent_service.js"
+                           :output-dir "target/dev"
                            :source-map-timestamp true
                            ;; To console.log CLJS data-structures make sure you enable devtools in Chrome
                            ;; https://github.com/binaryage/cljs-devtools
                            ;; :preloads [devtools.preload]
                            }}
+
+               {:id "test" ;; Same as "dev", but for testing.
+                :source-paths ["src" "test"]
+
+                :compiler {:main datomish-user-agent-service.test
+                           :target :nodejs
+                           :asset-path "target/test"
+                           :output-to "target/test/datomish_user_agent_service.js"
+                           :output-dir "target/test"
+                           :source-map true
+                           :source-map-timestamp true
+                           ;; To console.log CLJS data-structures make sure you enable devtools in Chrome
+                           ;; https://github.com/binaryage/cljs-devtools
+                           ;; :preloads [devtools.preload]
+                           }}
+
                ;; This next build is an compressed minified build for
                ;; production. You can build this with:
                ;; lein cljsbuild once min
                {:id "min"
                 :source-paths ["src"]
-                :compiler {:output-to "resources/public/js/compiled/datomish_user_agent_service.js"
+                :compiler {:output-to "release-node/datomish_user_agent_service.bare.js"
+                           :output-dir "release-node"
                            :main datomish-user-agent-service.core
                            :target :nodejs
                            :optimizations :advanced
@@ -96,15 +114,34 @@
   ;; https://github.com/bhauman/lein-figwheel/wiki/Using-the-Figwheel-REPL-within-NRepl
 
 
-  :profiles {:dev {:dependencies [[binaryage/devtools "0.7.2"]
+  ;; :profiles {:dev {:dependencies [[binaryage/devtools "0.7.2"]
+  ;;                                 [figwheel-sidecar "0.5.4-7"]
+  ;;                                 [com.cemerick/piggieback "0.2.1"]]
+  ;;                  ;; need to add dev source path here to get user.clj loaded
+  ;;                  :source-paths ["src" "dev"]
+  ;;                  ;; for CIDER
+  ;;                  ;; :plugins [[cider/cider-nrepl "0.12.0"]]
+  ;;                  :repl-options {; for nREPL dev you really need to limit output
+  ;;                                 :init (set! *print-length* 50)
+  ;;                                 :nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}}}
+
+  :profiles {:dev {:dependencies [[cljsbuild "1.1.3"]
+                                  [tempfile "0.2.0"]
+                                  [binaryage/devtools "0.7.2"]
                                   [figwheel-sidecar "0.5.4-7"]
-                                  [com.cemerick/piggieback "0.2.1"]]
+                                  [com.cemerick/piggieback "0.2.1"]
+                                  [org.clojure/tools.nrepl "0.2.10"]
+                                  [cljs-http "0.1.41"]]
+                   :jvm-opts ["-Xss4m"]
                    ;; need to add dev source path here to get user.clj loaded
                    :source-paths ["src" "dev"]
-                   ;; for CIDER
-                   ;; :plugins [[cider/cider-nrepl "0.12.0"]]
-                   :repl-options {; for nREPL dev you really need to limit output
-                                  :init (set! *print-length* 50)
-                                  :nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}}}
+                   :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
+                   :plugins      [[lein-cljsbuild "1.1.3"]
+                                  [lein-doo "0.1.6"]
+                                  [venantius/ultra "0.4.1"]
+                                  [com.jakemccrary/lein-test-refresh "0.16.0"]]
+                   }}
+
+  :doo {:build "dev"}
 
   )

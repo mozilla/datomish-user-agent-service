@@ -7,12 +7,12 @@
   "version": "0.1.0-SNAPSHOT",
   "description": "A Tofino User Agent Service built on top of Datomish.",
   "dependencies": {
-    "express": "^4.14.0",
-    "promise-sqlite": "1.2.1",
+    "body-parser": "1.15.2",
+    "express": "4.14.0",
+    "express-validator": "2.20.8",
+    "isomorphic-fetch": "2.2.1",
+    "promise-sqlite": "1.3.0",
     "source-map-support": "ncalexan/node-source-map-support#fileUrls-plus",
-    "sqlite3": "mossop/node-sqlite3#v3.1.4.1",
-    "swagger-tools": "^0.10.1",
-    "thenify-all": "^1.6.0",
     "ws": "1.1.1"
   },
   "repository": {
