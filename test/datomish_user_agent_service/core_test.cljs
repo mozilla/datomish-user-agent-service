@@ -66,7 +66,7 @@
 (deftest-async test-heartbeat
   (let [server (core/server 3002)]
     (try
-      (is (= (<? (<get "http://localhost:3002/__heartbeat__")) {}))
+      (is (= (<? (<get "http://localhost:3002/__heartbeat__")) {:version "v1"}))
       (finally (.close server)))))
 
 (deftest-async test-session
