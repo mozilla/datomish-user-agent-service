@@ -3,11 +3,11 @@
   :url "https://github.com/mozilla/datomish-user-agent-service"
   :license {:name "Mozilla Public License Version 2.0"
             :url  "https://github.com/mozilla/datomish-user-agent-service/blob/master/LICENSE"}
-  :dependencies [[org.clojure/clojurescript "1.9.227"]
+  :dependencies [[org.clojure/clojurescript "1.9.229"]
                  [org.clojure/clojure "1.8.0"]
-                 [org.clojure/core.async "0.2.391"]
-                 [jamesmacaulay/cljs-promises "0.1.0"]
-                 [datomish "0.1.0-SNAPSHOT"]]
+                 [org.clojure/core.async "0.2.385"]
+                 [jamesmacaulay/cljs-promises "0.1.1-SNAPSHOT"]
+                 [datomish "0.1.1-SNAPSHOT"]]
 
   :min-lein-version "2.6.1"
 
@@ -63,14 +63,30 @@
                ;; This next build is an compressed minified build for
                ;; production. You can build this with:
                ;; lein cljsbuild once min
-               {:id "min"
+               {:id "release-node"
                 :source-paths ["src"]
-                :compiler {:output-to "release-node/datomish_user_agent_service.bare.js"
-                           :output-dir "release-node"
-                           :main datomish-user-agent-service.core
-                           :target :nodejs
-                           :optimizations :advanced
-                           :pretty-print false}}]}
+                :assert         false
+                :compiler
+                {
+                 :elide-asserts  true
+                 :hashbang       false
+                 :language-in    :ecmascript5
+                 :language-out   :ecmascript5
+                 :optimizations  :advanced
+                 :externs        ["src/datomish_user_agent_service/externs/datomish_user_agent_service.js"]
+                 :output-dir     "target/release-node"
+                 :output-to      "target/release-node/datomish_user_agent_service.bare.js"
+                 :output-wrapper false
+                 :source-map-timestamp true
+                 :source-map     "target/release-node/datomish_user_agent_service.bare.js.map"
+                 :parallel-build true
+                 :pretty-print   true
+                 :pseudo-names   true
+                 :static-fns     true
+                 :target         :nodejs
+                 }
+                :notify-command ["release-node/wrap_bare.sh"]}
+               ]}
 
   :figwheel {;; :http-server-root "public" ;; default and assumes "resources"
              ;; :server-port 3449 ;; default

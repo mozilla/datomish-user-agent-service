@@ -9,6 +9,7 @@
             [datomish-user-agent-service.api :as api]
             [cljs.core.async :as a :refer [chan <! >!]]))
 
+
 (defonce express (nodejs/require "express"))
 (defonce expressValidator (nodejs/require "express-validator"))
 (defonce bodyParser (nodejs/require "body-parser"))
@@ -32,7 +33,7 @@
           (js/console.log "caught error" e)
           (doto res
             (.status 500)
-            (.json (clj->js {:error (clojure.string/split (.-stack e) "\n")})))
+            (.json (clj->js {:error (clojure.string/split (aget e "stack") "\n")})))
           )))))
 
 (defn- router [connection-pair-chan]
@@ -54,9 +55,9 @@
              (fn [req res]
                (go-pair
                  (let [session (<? (api/<start-session (<? connection-pair-chan)
-                                                       {:ancestor (-> req .-body .-ancestor)
-                                                        :scope (-> req .-body .-scope)}))]
-                   (. res (json (clj->js {:session session}))))))))
+                                                       {:ancestor (aget req "body" "ancestor")
+                                                        :scope (aget req "body" "scope")}))]
+                   (.json res (clj->js {:session session})))))))
 
     (.post "/session/end"
            (auto-caught-route-error
@@ -69,8 +70,8 @@
              (fn [req res]
                (go-pair
                  (let [_ (<? (api/<end-session (<? connection-pair-chan)
-                                               {:session (-> req .-body .-session)}))]
-                   (. res (json (clj->js {}))))))))
+                                               {:session (aget req "body" "session")}))]
+                   (.json res (clj->js {})))))))
 
     (.post "/visits"
            (auto-caught-route-error
@@ -89,10 +90,10 @@
              (fn [req res]
                (go-pair
                  (let [_ (<? (api/<add-visit (<? connection-pair-chan)
-                                             {:url (-> req .-body .-url)
-                                              :title (-> req .-body .-title)
-                                              :session (-> req .-body .-session)}))]
-                   (. res (json (clj->js {}))))))))
+                                             {:url (aget req "body" "url")
+                                              :title (aget req "body" "title")
+                                              :session (aget req "body" "session")}))]
+                   (.json res (clj->js {})))))))
 
     (.get "/visits"
           (auto-caught-route-error
@@ -105,8 +106,8 @@
             (fn [req res]
               (go-pair
                 (let [results (<? (api/<visited (d/db (<? connection-pair-chan)) ;; TODO -- unify on conn over db?
-                                                {:limit (int (-> req .-query .-limit))}))]
-                  (. res (json (clj->js {:pages results}))))))))
+                                                {:limit (int (aget req "query" "limit"))}))]
+                  (.json res (clj->js {:pages results})))))))
 
     (.post "/stars/star"
            (auto-caught-route-error
@@ -125,12 +126,12 @@
              (fn [req res]
                (go-pair
                  (let [_ (<? (api/<star-page (<? connection-pair-chan)
-                                             {:url (-> req .-body .-url)
-                                              :title (-> req .-body .-title) ;; TODO: allow no title.
+                                             {:url (aget req "body" "url")
+                                              :title (aget req "body" "title") ;; TODO: allow no title.
                                               :starred true
-                                              :session (int (-> req .-body .-session))}))]
+                                              :session (int (aget req "body" "session"))}))]
                    ;; TODO: dispatch bookmark diffs to WS.
-                   (. res (json (clj->js {}))))))))
+                   (.json res (clj->js {})))))))
 
     (.post "/stars/unstar"
            (auto-caught-route-error
@@ -146,11 +147,11 @@
              (fn [req res]
                (go-pair
                  (let [_ (<? (api/<star-page (<? connection-pair-chan)
-                                             {:url (-> req .-body .-url)
+                                             {:url (aget req "body" "url")
                                               :starred false
-                                              :session (int (-> req .-body .-session))}))]
+                                              :session (int (aget req "body" "session"))}))]
                    ;; TODO: dispatch bookmark diffs to WS.
-                   (. res (json (clj->js {}))))))))
+                   (.json res (clj->js {})))))))
 
     (.get "/stars"
           (auto-caught-route-error
@@ -163,9 +164,9 @@
             (fn [req res]
               (go-pair
                 (let [results (<? (api/<starred-pages (d/db (<? connection-pair-chan)) ;; TODO -- unify on conn over db?
-                                                      {:limit (int (or (-> req .-query .-limit) 100))} ;; TODO - js/Number.MAX_SAFE_INTEGER
+                                                      {:limit (int (or (aget req "query" "limit") 100))} ;; TODO - js/Number.MAX_SAFE_INTEGER
                                                       ))]
-                  (. res (json (clj->js {:results results}))))))))
+                  (.json res (clj->js {:results results})))))))
 
     (.post "/pages"
            (auto-caught-route-error
@@ -190,13 +191,13 @@
              (fn [req res]
                (go-pair
                  (let [_ (<? (api/<save-page (<? connection-pair-chan)
-                                             {:url (-> req .-body .-url)
-                                              :title (-> req .-body .-page .-title)
-                                              :excerpt (-> req .-body .-page .-excerpt)
-                                              :content (-> req .-body .-page .-textContent)
-                                              :session (int (-> req .-body .-session))}))]
+                                             {:url (aget req "body" "url")
+                                              :title (aget req "body" "page" "title")
+                                              :excerpt (aget req "body" "page" "excerpt")
+                                              :content (aget req "body" "page" "textContent")
+                                              :session (int (aget req "body" "session"))}))]
                    ;; TODO: dispatch bookmark diffs to WS.
-                   (. res (json (clj->js {}))))))))
+                   (.json res (clj->js {})))))))
 
     (.get "/query"
           (auto-caught-route-error
@@ -219,10 +220,10 @@
             (fn [req res]
               (go-pair
                 (let [results (<? (api/<saved-pages-matching-string (d/db (<? connection-pair-chan)) ;; TODO -- unify on conn over db?
-                                                                    (-> req .-query .-q)
+                                                                    (aget req "query" "q")
                                                                     ;; {:limit (int (or (-> req .-query .-limit) 100))} ;; TODO - js/Number.MAX_SAFE_INTEGER
                                                                     ))]
-                  (. res (json (clj->js {:results results}))))))))))
+                  (.json res (clj->js {:results results})))))))))
 
 (defn- error-handler [err req res next]
   (doto res
@@ -232,7 +233,7 @@
 (defn- not-found-handler [req res next]
   (doto res
     (.status 404)
-    (.json (clj->js {:url (.-originalUrl req)}))))
+    (.json (clj->js {:url (aget req "originalUrl")}))))
 
 ;; TODO: logging throughout.
 (defn app [connection-pair-chan]
@@ -242,7 +243,7 @@
     (.use "/v1" (router connection-pair-chan))
 
     (.get "/__heartbeat__" 
-          (fn [req res] (. res (json (clj->js {:version "v1"})))))
+          (fn [req res] (.json res (clj->js {:version "v1"}))))
 
     (.use not-found-handler)
     (.use error-handler)))
