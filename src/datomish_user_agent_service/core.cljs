@@ -34,13 +34,6 @@
 
 (def router (. express Router))
 
-;; TODO: figure out how to give JSON 404 errors.
-;; (defn- error-handler [err req res next]
-;;   (js/console.log "error-handler" err)
-;;   (.send (.status res 500)))
-
-;; (.use router error-handler)
-
 (doto app
   (.use (.json bodyParser))
   (.use (expressValidator))
@@ -67,7 +60,10 @@
             (<? (method req res next))))
         (catch js/Error e
           (js/console.log "caught error" e)
-          (next e))))))
+          (doto res
+            (.status 500)
+            (.json (clj->js {:error (clojure.string/split (.-stack e) "\n")})))
+          )))))
 
 ;; TODO: write a small macro to cut down this boilerplate.
 (. router (post "/session/start"
@@ -130,7 +126,7 @@
                  (fn [req]
                    (-> req
                        (.checkQuery "limit")
-                       (.notEmpty)
+                       (.optional)
                        (.isInt))
                    )
                  (fn [req res]
@@ -139,11 +135,11 @@
                                                      {:limit (int (-> req .-query .-limit))}))]
                        (. res (json (clj->js {:pages results})))))))))
 
-(. router (post "/stars/:url"
+(. router (post "/stars/star"
                 (auto-caught-route-error
                   (fn [req]
                     (-> req
-                        (.checkParams "url")
+                        (.checkBody "url")
                         (.notEmpty))
                     (-> req
                         (.checkBody "title")
@@ -156,56 +152,62 @@
                   (fn [req res]
                     (go-pair
                       (let [_ (<? (api/<star-page (<? app-state)
-                                                  {:url (-> req .-params .-url)
+                                                  {:url (-> req .-body .-url)
                                                    :title (-> req .-body .-title) ;; TODO: allow no title.
-                                                   ;; TODO: coerce session to integer.
+                                                   :starred true
                                                    :session (int (-> req .-body .-session))}))]
                         ;; TODO: dispatch bookmark diffs to WS.
                         (. res (json (clj->js {})))))))))
 
-;; (. router (delete "/stars/:url"
-;;                   (auto-caught-route-error
-;;                     (fn [req]
-;;                       (-> req
-;;                           (.checkParams "url")
-;;                           (.notEmpty))
-;;                       (-> req
-;;                           (.checkBody "session")
-;;                           (.notEmpty)
-;;                           (.isInt))
-;;                       )
-;;                     (fn [req res]
-;;                       (go-pair
-;;                         (let [_ (<? (api/<star-page (<? app-state)
-;;                                                     {:url (-> req .-params .-url)
-;;                                                      ;; TODO: coerce session to integer.
-;;                                                      :session (-> req .-body .-session)}))]
-;;                           ;; TODO: dispatch bookmark diffs to WS.
-;;                           (. res (json (clj->js {})))))))))
+(. router (post "/stars/unstar"
+                (auto-caught-route-error
+                  (fn [req]
+                    (-> req
+                        (.checkBody "url")
+                        (.notEmpty))
+                    (-> req
+                        (.checkBody "session")
+                        (.notEmpty)
+                        (.isInt))
+                    )
+                  (fn [req res]
+                    (go-pair
+                      (let [_ (<? (api/<star-page (<? app-state)
+                                                  {:url (-> req .-body .-url)
+                                                   :starred false
+                                                   :session (int (-> req .-body .-session))}))]
+                        ;; TODO: dispatch bookmark diffs to WS.
+                        (. res (json (clj->js {})))))))))
 
 (. router (get "/stars"
                (auto-caught-route-error
                  (fn [req]
-                   )
-                 (fn [req res]
-                   (go-pair
-                     (let [results (<? (api/<starred-pages (d/db (<? app-state))))]
-                       (. res (json (clj->js {:stars results})))))))))
-
-(. router (get "/recentStars"
-               (auto-caught-route-error
-                 (fn [req]
                    (-> req
                        (.checkQuery "limit")
-                       (.notEmpty)
+                       (.optional)
                        (.isInt))
                    )
                  (fn [req res]
                    (go-pair
                      (let [results (<? (api/<starred-pages (d/db (<? app-state)) ;; TODO -- unify on conn over db?
-                                                           ;; {:limit (int (-> req .-query .-limit))}
+                                                           {:limit (int (or (-> req .-query .-limit) 100))} ;; TODO - js/Number.MAX_SAFE_INTEGER
                                                            ))]
-                       (. res (json (clj->js {:stars results})))))))))
+                       (. res (json (clj->js {:results results})))))))))
+
+
+(defn error-handler [err req res next]
+  (doto res
+    (.status 500)
+    (.json (clj->js {:error err}))))
+
+(defn not-found-handler [req res next]
+  (js/console.log (.-url req))
+  (doto res
+    (.status 404)
+    (.json (clj->js {:url (.-originalUrl req)}))))
+
+(.use app not-found-handler)
+(.use app error-handler)
 
 ;; (def -main 
 ;;   (fn []

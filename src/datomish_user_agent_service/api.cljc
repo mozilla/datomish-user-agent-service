@@ -188,8 +188,8 @@
       [?id :session/endReason ?endReason ?tx]
       [?tx :db/txInstant ?ts]]))
 
-;; TODO: implement unstar.
-(defn <star-page [conn {:keys [url uri title session]}]
+(defn <star-page [conn {:keys [url uri title session starred]
+                        :or {starred true}}]
   (let [page (d/id-literal :db.part/user -1)]
     (d/<transact!
       conn
@@ -200,26 +200,36 @@
            {:page/title title})
          {:db/id        page
           :page/url     (or uri url)
-          :page/starred true})])))
+          :page/starred starred})])))
 
 ;; TODO: limit.
-(defn <starred-pages [db]
-  (go-pair
-    (->>
-      (<?
-        (d/<q
-          db
-          '[:find ?page ?uri ?title ?starredOn
-            :in $
-            :where
-            [?page :page/starred true ?tx]
+(defn <starred-pages [db {:keys [limit since]
+                          :or {limit 10}}]
+  (let [where
+        (if since
+          '[[?page :page/starred true ?tx]
             [?tx :db/txInstant ?starredOn]
-            [?page :page/url ?uri]
-            [?page :page/title ?title]                   ; N.B., this means we will exclude pages with no title.
-            ]))
+            [(> ?starredOn ?since)]
+            [?page :page/url ?url]
+            [(get-else $ ?page :page/title "") ?title]]
 
-      (map (fn [[page uri title starredOn]]
-             {:uri uri :title title})))))
+          '[[?page :page/starred true ?tx]
+            [?tx :db/txInstant ?starredOn]
+            [?page :page/url ?url]
+            [(get-else $ ?page :page/title "") ?title]])]
+
+    (go-pair
+      (let [rows (<? (d/<q
+                       db
+                       {:find '[?url ?title ?starredOn]
+                        :in (if since '[$ ?since] '[$])
+                        :where where}
+                       {:limit limit
+                        :order-by [[:starredOn :desc]]
+                        :inputs {:since since}}))]
+        (map (fn [[url title starredOn]]
+               {:url url :title title :starredOn starredOn})
+             rows)))))
 
 (defn <save-page [conn {:keys [url uri title session excerpt content]}]
   (let [save (d/id-literal :db.part/user -1)
@@ -290,25 +300,25 @@
           '[[?visit :visit/visitAt ?time]
             [(> ?time ?since)]
             [?page :page/visit ?visit]
-            [?page :page/url ?uri]
+            [?page :page/url ?url]
             [(get-else $ ?page :page/title "") ?title]]
 
           '[[?page :page/visit ?visit]
             [?visit :visit/visitAt ?time]
-            [?page :page/url ?uri]
+            [?page :page/url ?url]
             [(get-else $ ?page :page/title "") ?title]])]
 
     (go-pair
       (let [rows (<? (d/<q
                        db
-                       {:find '[?uri ?title (max ?time)]
+                       {:find '[?url ?title (max ?time)]
                         :in (if since '[$ ?since] '[$])
                         :where where}
                        {:limit limit
                         :order-by [[:_max_time :desc]]
                         :inputs {:since since}}))]
-        (map (fn [[uri title lastVisited]]
-               {:uri uri :title title :lastVisited lastVisited})
+        (map (fn [[url title lastVisited]]
+               {:url url :title title :lastVisited lastVisited})
              rows)))))
 
 (defn <find-title [db url]

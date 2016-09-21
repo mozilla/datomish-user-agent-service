@@ -56,11 +56,12 @@
   ([url body options]
    (<fetch url (merge options {:method "POST" :body (js/JSON.stringify (clj->js body))}))))
 
+
 (def <get <fetch)
 
-(defn- dissoc-visits [pages]
+(defn- dissoc-timestamps [key pages]
   ;; TODO: verify timestamps are microseconds.
-  (map #(dissoc % :lastVisited) pages))
+  (map #(dissoc % key) pages))
 
 (deftest-async test-heartbeat
   (let [server (core/server 3002)]
@@ -100,14 +101,14 @@
                {}))
         ;; TODO: 400 with no URL or no session (or invalid URL?).
 
-        (is (= (dissoc-visits (:pages (<? (<get "http://localhost:3002/v1/visits?limit=2"))))
-               [{:uri "https://www.mozilla.org/en-US/firefox/new/",
+        (is (= (dissoc-timestamps :lastVisited (:pages (<? (<get "http://localhost:3002/v1/visits?limit=2"))))
+               [{:url "https://www.mozilla.org/en-US/firefox/new/",
                  :title "Download Firefox - Free Web Browser"}
-                {:uri "https://reddit.com/",
+                {:url "https://reddit.com/",
                  :title ""}]))
 
-        (is (= (dissoc-visits (:pages (<? (<get "http://localhost:3002/v1/visits?limit=1"))))
-               [{:uri "https://www.mozilla.org/en-US/firefox/new/",
+        (is (= (dissoc-timestamps :lastVisited (:pages (<? (<get "http://localhost:3002/v1/visits?limit=1"))))
+               [{:url "https://www.mozilla.org/en-US/firefox/new/",
                  :title "Download Firefox - Free Web Browser"}])))
       (finally (.close server)))))
 
@@ -116,21 +117,40 @@
     (try
       (let [{s :session} (<? (<post "http://localhost:3002/v1/session/start" {}))]
         ;; TODO: Allow no title.
-        (is (= (<? (<post (str "http://localhost:3002/v1/stars/" (js/encodeURIComponent "https://reddit.com/"))
-                          {:title "reddit - the front page of the internet"
-                           :session s}))
-               {}))
-        ;; With title.
-        (is (= (<? (<post (str "http://localhost:3002/v1/stars/" (js/encodeURIComponent "https://www.mozilla.org/en-US/firefox/new/"))
-                          {:title "Download Firefox - Free Web Browser"
+        (is (= (<? (<post "http://localhost:3002/v1/stars/star"
+                          {:url "https://reddit.com/"
+                           :title "reddit - the front page of the internet"
                            :session s}))
                {}))
 
-        ;; TODO: accept limit, order by starredOn descending (like /visits).
-        (is (= (set (dissoc-visits (:stars (<? (<get "http://localhost:3002/v1/stars")))))
-               #{{:uri "https://www.mozilla.org/en-US/firefox/new/",
-                  :title "Download Firefox - Free Web Browser"}
-                 {:uri "https://reddit.com/",
-                  :title "reddit - the front page of the internet"}
-                 })))
+        ;; With title.
+        (is (= (<? (<post "http://localhost:3002/v1/stars/star"
+                          {:url "https://www.mozilla.org/en-US/firefox/new/"
+                           :title "Download Firefox - Free Web Browser"
+                           :session s}))
+               {}))
+
+        (is (= (dissoc-timestamps :starredOn (:results (<? (<get "http://localhost:3002/v1/stars"))))
+               [{:url "https://www.mozilla.org/en-US/firefox/new/",
+                 :title "Download Firefox - Free Web Browser"}
+                {:url "https://reddit.com/",
+                 :title "reddit - the front page of the internet"}
+                ]))
+
+        (is (= (dissoc-timestamps :starredOn (:results (<? (<get "http://localhost:3002/v1/stars?limit=1"))))
+               [{:url "https://www.mozilla.org/en-US/firefox/new/",
+                 :title "Download Firefox - Free Web Browser"}
+                ]))
+
+        (is (= (<? (<post "http://localhost:3002/v1/stars/unstar"
+                          {:url "https://www.mozilla.org/en-US/firefox/new/"
+                           :session s}))
+               {}))
+
+        (is (= (dissoc-timestamps :starredOn (:results (<? (<get "http://localhost:3002/v1/stars"))))
+               [{:url "https://reddit.com/",
+                 :title "reddit - the front page of the internet"}
+                ]))
+
+        )
       (finally (.close server)))))
