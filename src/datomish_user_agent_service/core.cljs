@@ -194,6 +194,62 @@
                                                            ))]
                        (. res (json (clj->js {:results results})))))))))
 
+(. router (post "/pages"
+                (auto-caught-route-error
+                  (fn [req]
+                    (-> req
+                        (.checkBody "url")
+                        (.notEmpty))
+                    (-> req
+                        (.checkBody #js ["page" "textContent"]) ;; #js is required here and below.
+                        (.notEmpty))
+                    (-> req
+                        (.checkBody #js ["page" "title"])
+                        (.optional))
+                    (-> req
+                        (.checkBody #js ["page" "excerpt"])
+                        (.optional))
+                    (-> req
+                        (.checkBody "session")
+                        (.notEmpty)
+                        (.isInt))
+                    )
+                  (fn [req res]
+                    (go-pair
+                      (let [_ (<? (api/<save-page (<? app-state)
+                                                  {:url (-> req .-body .-url)
+                                                   :title (-> req .-body .-page .-title)
+                                                   :excerpt (-> req .-body .-page .-excerpt)
+                                                   :content (-> req .-body .-page .-textContent)
+                                                   :session (int (-> req .-body .-session))}))]
+                        ;; TODO: dispatch bookmark diffs to WS.
+                        (. res (json (clj->js {})))))))))
+
+(. router (get "/query"
+               (auto-caught-route-error
+                 (fn [req]
+                   (-> req
+                       (.checkQuery "q")
+                       (.notEmpty))
+                   (-> req
+                       (.checkQuery "limit")
+                       (.optional)
+                       (.isInt))
+                   (-> req
+                       (.checkQuery "since")
+                       (.optional)
+                       (.isInt))
+                   (-> req
+                       (.checkQuery "snippetSize")
+                       (.optional))
+                   )
+                 (fn [req res]
+                   (go-pair
+                     (let [results (<? (api/<saved-pages-matching-string (d/db (<? app-state)) ;; TODO -- unify on conn over db?
+                                                                         (-> req .-query .-q)
+                                                                         ;; {:limit (int (or (-> req .-query .-limit) 100))} ;; TODO - js/Number.MAX_SAFE_INTEGER
+                                                                         ))]
+                       (. res (json (clj->js {:results results})))))))))
 
 (defn error-handler [err req res next]
   (doto res

@@ -251,26 +251,43 @@
          (when content
            {:save/content content}))])))
 
+;; TODO: limit, since.
+;; TODO: return lastVisited, sort by lastVisited.
+;; TODO: support snippet extraction.
 (defn <saved-pages [db]
-  (d/<q db
-        '[:find ?page ?url ?title ?excerpt
-          :in $
-          :where
-          [?save :save/page ?page]
-          [?page :page/url ?url]
-          [(get-else $ ?save :save/title "") ?title]
-          [(get-else $ ?save :save/excerpt "") ?excerpt]]))
+  (go-pair
+    (->>
+      (<?
+        (d/<q
+          db
+          '[:find ?page ?url ?title ?excerpt
+            :in $
+            :where
+            [?save :save/page ?page]
+            [?page :page/url ?url]
+            [(get-else $ ?save :save/title "") ?title]
+            [(get-else $ ?save :save/excerpt "") ?excerpt]]))
+      (map (fn [[page url title excerpt]]
+             {:url url :title title :excerpt excerpt :snippet nil :lastVisited nil})))))
 
+;; TODO: limit, since.
+;; TODO: return lastVisited, sort by lastVisited.
+;; TODO: support snippet extraction.
 (defn <saved-pages-matching-string [db string]
-  (d/<q db
-        {:find '[?page ?url ?title ?excerpt]
-         :in '[$]
-         :where [[(list 'fulltext '$ :any string) '[[?save]]]
-                 '[?save :save/page ?page]
-                 '[?page :page/url ?url]
-                 '[(get-else $ ?save :save/title "") ?title]
-                 '[(get-else $ ?save :save/excerpt "") ?excerpt]]}))
-
+  (go-pair
+    (->>
+      (<?
+        (d/<q
+          db
+          {:find '[?page ?url ?title ?excerpt]
+           :in '[$]
+           :where [[(list 'fulltext '$ :any string) '[[?save]]]
+                   '[?save :save/page ?page]
+                   '[?page :page/url ?url]
+                   '[(get-else $ ?save :save/title "") ?title]
+                   '[(get-else $ ?save :save/excerpt "") ?excerpt]]}))
+      (map (fn [[page url title excerpt]]
+             {:url url :title title :excerpt excerpt :snippet nil :lastVisited nil})))))
 
 ;; TODO: return ID?
 (defn <add-visit [conn {:keys [url uri title session]}]

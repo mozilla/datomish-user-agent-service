@@ -154,3 +154,50 @@
 
         )
       (finally (.close server)))))
+
+(deftest-async test-page-details
+  (let [server (core/server 3002)]
+    (try
+      (let [{s :session} (<? (<post "http://localhost:3002/v1/session/start" {}))]
+        (is (= (<? (<post "http://localhost:3002/v1/pages"
+                          {:session s
+                           :url "https://test.domain/"
+                           :page {:title "test title"
+                                  :excerpt "excerpt from test.domain"
+                                  :textContent "Long text content containing excerpt from test.domain and other stuff"
+                                  }}))
+               {}))
+
+        (is (= (<? (<post "http://localhost:3002/v1/pages"
+                          {:session s
+                           :url "https://another.domain/"
+                           :page {:title "another title"
+                                  :excerpt "excerpt from another.domain"
+                                  :textContent "Long text content containing excerpt from another.domain and other stuff"
+                                  }}))
+               {}))
+
+        (is (= (dissoc-timestamps :lastVisited (:results (<? (<get "http://localhost:3002/v1/query?q=Long%20text&snippetSize=tiny"))))
+               [{:url "https://test.domain/",
+                 :title "test title"
+                 :excerpt "excerpt from test.domain"
+                 :snippet nil ;; TODO: support snippets.
+                 ;; :snippet "<b>Long</b> <b>text</b> content containing excerpt…"
+                 }
+                {:url "https://another.domain/",
+                 :title "another title"
+                 :excerpt "excerpt from another.domain"
+                 :snippet nil
+                 ;; :snippet "<b>Long</b> <b>text</b> content containing excerpt…"
+                 }
+                ]))
+
+        ;; ;; TODO: support limit, since.
+        ;; (is (= (dissoc-timestamps :lastVisited (:results (<? (<get "http://localhost:3002/v1/query?q=Long%20text&snippetSize=large&limit=1"))))
+        ;;        [{:url "https://another.domain/",
+        ;;          :title "another title"
+        ;;          :snippet "<b>Long</b> <b>text</b> content containing excerpt from another.domain and other stuff"}
+        ;;         ]))
+
+        )
+      (finally (.close server)))))
