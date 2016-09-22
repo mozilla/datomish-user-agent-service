@@ -5,44 +5,70 @@
 (ns datomish-user-agent-service.js
   (:refer-clojure :exclude [])
   (:require-macros
-   [datomish.pair-chan :refer [go-pair <?]])
+   [datomish.pair-chan :refer [go-pair <?]]
+   [datomish.promises :refer [go-promise]])
   (:require
+   [cljs.nodejs :as nodejs]
    [cljs.core.async :as a :refer [take! <! >!]]
    [cljs.reader]
    [cljs-promises.core :refer [promise]]
+   [datomish.api :as d]
+   [datomish.cljify :refer [cljify]]
+   [datomish.promises]
    [datomish.pair-chan]
-   ;; [datomish-user-agent-service.core :as core]
+   [datomish-user-agent-service.api :as api]
+   [datomish-user-agent-service.server :as server]
    ))
 
-(defn- take-pair-as-promise! [ch]
-  ;; Just like take-as-promise!, but aware that it's handling a pair channel.
-  (promise
-    (fn [resolve reject]
-      (letfn [(split-pair [[v e]]
-                (if e
-                  (reject e)
-                  (resolve v)))]
-        (cljs.core.async/take! ch split-pair)))))
+(defonce http (nodejs/require "http"))
 
+(defn ^:export UserAgentService [options]
+  (go-promise
+    identity
 
-(defn ^:export x [x]
-  (js/console.log x))
+    ;; TODO: use whatever validation library we use for body parameters.
+    (let [options (cljify options)]
+      (when-not (number? (:port options))
+        (throw (js/Error. "UserAgentService requires a `port` number.")))
+      (when-not (string? (:db options))
+        (throw (js/Error. "UserAgentService requires a `db` string.")))
+      ;; TODO: allow version to vary.
+      (when-not (= "v1" (:version options))
+        (throw (js/Error. "UserAgentService requires a valid `version`.")))
+      (when-not (string? (:contentServiceOrigin options))
+        (throw (js/Error. "UserAgentService requires a `contentServiceOrigin` string.")))
 
-;; Public API.
+      (let [{:keys [port db version contentServiceOrigin]} options]
+        (js/console.log "Opening Datomish knowledge-base at" (:db options))
 
-;; (defn ^:export open [path]
-;;   ;; Eventually, URI.  For now, just a plain path (no file://).
-;;   (take-pair-as-promise!
-;;     (go-pair
-;;       (let [conn (<? (sqlite/<sqlite-connection path))
-;;             db (<? (db-factory/<db-with-sqlite-connection conn))]
-;;         (let [c (transact/connection-with-db db)]
-;;           (clj->js
-;;             {:conn c
-;;              :close (fn [] (db/close-db db))
-;;              :toString (fn [] (str "#<DB " path ">"))
-;;              :path path}))))))
+        (let [c (go-pair ;; Blocked on (repeatedly!) in server/app.  This is just one way to async sequence.
+                  (let [c (<? (d/<connect db)) ;; In-memory for now.
+                        _ (<? (d/<transact! c api/tofino-schema))] ;; TODO: don't do try to write.
+                    c))
 
-;; (defn ^:export q [query & sources]
-;;   (let [query   (cljs.reader/read-string query)]
-;;     (clj->js query)))
+              app
+              (server/app c)
+              
+              server
+              (doto (.createServer http #(app %1 %2))
+                (.listen port))
+
+              stop
+              (fn []
+                ;; TODO: close DB before exiting process.
+                (go-promise
+                  identity
+
+                  (<? (d/<close c))
+
+                  ;; A promise that returns a promise.
+                  (promise (fn [resolve reject]
+                             (.close server (fn [err] (if err
+                                                        (reject err)                             
+                                                        (do
+                                                          (resolve)))))))))
+              ]
+          stop)))))
+
+(defn -main [])
+(set! *main-cli-fn* -main)

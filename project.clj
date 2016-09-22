@@ -68,6 +68,7 @@
                 :assert         false
                 :compiler
                 {
+                 :main datomish-user-agent-service.js
                  :elide-asserts  true
                  :hashbang       false
                  :language-in    :ecmascript5
