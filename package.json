@@ -7,13 +7,16 @@
   "version": "0.1.0-SNAPSHOT",
   "description": "A Tofino User Agent Service built on top of Datomish.",
   "dependencies": {
+    "appdirectory": "0.1.0",
     "body-parser": "1.15.2",
     "express": "4.14.0",
     "express-validator": "2.20.8",
+    "fs-extra": "0.30.0",
     "isomorphic-fetch": "2.2.1",
     "promise-sqlite": "1.3.0",
     "source-map-support": "ncalexan/node-source-map-support#fileUrls-plus",
-    "ws": "1.1.1"
+    "ws": "1.1.1",
+    "yargs": "5.0.0"
   },
   "repository": {
     "type": "git",
@@ -27,6 +30,7 @@
   "homepage": "https://github.com/mozilla/datomish-user-agent-service#readme",
   "main": "./target/release-node/datomish_user_agent_service.js",
   "files": [
+    "bin",
     "target/release-node/datomish_user_agent_service.js"
   ]
 }

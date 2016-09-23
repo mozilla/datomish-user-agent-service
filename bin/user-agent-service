@@ -1,0 +1,116 @@
+// TODO: License block.
+
+/* eslint-disable */
+
+var meta = {
+  "validVersions": ["v1"],
+  "defaultVersion": "v1"
+};
+
+var UserAgentService = require('../target/release-node/datomish_user_agent_service').UserAgentService;
+// var repl = require('repl');
+//var { argParser, parseArgs } = require('../../../shared/environment');
+
+var yargs = require('yargs/yargs');
+var path = require('path');
+var AppDirectory = require('appdirectory');
+var fs = require('fs-extra');
+// import manifest from '../../package.json';
+// import BUILD_CONFIG from '../build-config.json';
+
+// Electron sets a flag to let you know if the path to the app is included in
+// the command line arguments.
+const argv = process.argv.slice(process.defaultApp ? 2 : 1);
+
+const argParser = yargs(argv).usage('Usage: $0 [options]').option('P', {
+  alias: 'profile',
+  default: undefined,
+  describe: 'The user profile directory.',
+  type: 'string',
+});
+
+// let parsedArgs;
+
+// /**
+//  * Note that it is important to not call this before all of the necessary
+//  * options have been added to the above argument parser. Normally you should
+//  * add options in the top level of modules that are imported at startup then
+//  * call this some time later.
+//  */
+// export function parseArgs() {
+//   if (parsedArgs !== undefined) {
+//     return parsedArgs;
+//   }
+
+//   parsedArgs = argParser.argv;
+
+//   if (parsedArgs.profile === undefined) {
+//     if (!BUILD_CONFIG.development) {
+//       const directories = new AppDirectory({
+//         appName: manifest.name,
+//         appAuthor: manifest.author.name,
+//       });
+
+//       parsedArgs.profile = directories.userData();
+//     } else {
+//       parsedArgs.profile = path.join(LIBDIR, '..', 'profile');
+//     }
+//   }
+
+//   fs.mkdirsSync(parsedArgs.profile);
+
+//   return parsedArgs;
+// }
+
+
+// var { logger } = require('../../../shared/logging');
+
+// process.on('uncaughtException', (err) => {
+//   logger.error(err.stack);
+//   process.exit(101);
+// });
+
+// process.on('unhandledRejection', (reason, p) => {
+//   logger.error(`Unhandled Rejection at: Promise ${JSON.stringify(p)}`);
+//   logger.error(reason.stack);
+//   process.exit(102);
+// });
+
+argParser.option('p', {
+  alias: 'port',
+  require: true,
+  describe: 'The port that the UserAgentService will run on.',
+  type: 'number'
+})
+.option('v', {
+  alias: 'version',
+  describe: 'The version of API to use.',
+  choices: meta.validVersions,
+  default: meta.defaultVersion,
+  type: 'string',
+})
+.option('c', {
+  alias: 'content-service-origin',
+  describe: 'The origin of the Content Service so that CORS can be enabled.',
+  default: 'tofino://',
+  type: 'string'
+})
+.option('r', {
+  alias: 'repl',
+  require: false,
+  describe: 'If provided, start a REPL after launching the user agent service.',
+  type: 'boolean'
+});
+
+const argv2 = argParser.argv;
+
+UserAgentService({
+  port: argv2.port,
+  db: `${argv2.profile}/browser.db`,
+  version: argv2.version,
+  contentServiceOrigin: argv2.contentServiceOrigin,
+});
+
+// if (argv.repl) {
+//   repl.start();
+// }
