@@ -39,7 +39,7 @@
         (throw (js/Error. "UserAgentService requires a `contentServiceOrigin` string.")))
 
       (let [{:keys [port db version contentServiceOrigin]} options]
-        (js/console.log "Opening Datomish knowledge-base at" (:db options))
+        (println "Opening Datomish knowledge-base at" (:db options))
 
         (let [c (go-pair ;; Blocked on (repeatedly!) in server/app.  This is just one way to async sequence.
                   (let [c (<? (d/<connect db)) ;; In-memory for now.
@@ -59,7 +59,7 @@
                 (go-promise
                   identity
 
-                  (<? (d/<close c))
+                  (<? (d/<close (<? c)))
 
                   ;; A promise that returns a promise.
                   (promise (fn [resolve reject]
@@ -72,3 +72,5 @@
 
 (defn -main [])
 (set! *main-cli-fn* -main)
+
+(aset js/module "exports" #js {:UserAgentService UserAgentService})

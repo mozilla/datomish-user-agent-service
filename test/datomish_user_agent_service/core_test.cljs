@@ -72,32 +72,32 @@
 (deftest-async test-session
   (let [server (core/server 3002)]
     (try
-      (let [{s1 :session} (<? (<post "http://localhost:3002/v1/session/start" {}))
-            {s2 :session} (<? (<post "http://localhost:3002/v1/session/start" {:scope s1}))]
+      (let [{s1 :session} (<? (<post "http://localhost:3002/v1/sessions/start" {}))
+            {s2 :session} (<? (<post "http://localhost:3002/v1/sessions/start" {:scope s1}))]
         (is (number? s1))
         (is (number? s2))
         (is (= s1 (dec s2)))
 
-        (is (= (<? (<post "http://localhost:3002/v1/session/end" {:session s1})) {}))
-        (is (= (<? (<post "http://localhost:3002/v1/session/end" {:session s2})) {}))
+        (is (= (<? (<post "http://localhost:3002/v1/sessions/end" {:session s1})) {}))
+        (is (= (<? (<post "http://localhost:3002/v1/sessions/end" {:session s2})) {}))
 
         ;; TODO: 404 the second time through.
-        (is (= (<? (<post "http://localhost:3002/v1/session/end" {:session s1})) {})))
+        (is (= (<? (<post "http://localhost:3002/v1/sessions/end" {:session s1})) {})))
 
       (finally (.close server)))))
 
 (deftest-async test-visits
   (let [server (core/server 3002)]
     (try
-      (let [{s :session} (<? (<post "http://localhost:3002/v1/session/start" {}))]
+      (let [{s :session} (<? (<post "http://localhost:3002/v1/sessions/start" {}))]
         ;; No title.
-        (is (= (<? (<post "http://localhost:3002/v1/visits" {:session s
-                                                             :url "https://reddit.com/"}))
+        (is (= (<? (<post "http://localhost:3002/v1/visits/visit" {:session s
+                                                                   :url "https://reddit.com/"}))
                {}))
         ;; With title.
-        (is (= (<? (<post "http://localhost:3002/v1/visits" {:session s
-                                                             :url "https://www.mozilla.org/en-US/firefox/new/"
-                                                             :title "Download Firefox - Free Web Browser"}))
+        (is (= (<? (<post "http://localhost:3002/v1/visits/visit" {:session s
+                                                                   :url "https://www.mozilla.org/en-US/firefox/new/"
+                                                                   :title "Download Firefox - Free Web Browser"}))
                {}))
         ;; TODO: 400 with no URL or no session (or invalid URL?).
 
@@ -115,7 +115,7 @@
 (deftest-async test-stars
   (let [server (core/server 3002)]
     (try
-      (let [{s :session} (<? (<post "http://localhost:3002/v1/session/start" {}))]
+      (let [{s :session} (<? (<post "http://localhost:3002/v1/sessions/start" {}))]
         ;; TODO: Allow no title.
         (is (= (<? (<post "http://localhost:3002/v1/stars/star"
                           {:url "https://reddit.com/"
@@ -158,7 +158,7 @@
 (deftest-async test-page-details
   (let [server (core/server 3002)]
     (try
-      (let [{s :session} (<? (<post "http://localhost:3002/v1/session/start" {}))]
+      (let [{s :session} (<? (<post "http://localhost:3002/v1/sessions/start" {}))]
         (is (= (<? (<post "http://localhost:3002/v1/pages"
                           {:session s
                            :url "https://test.domain/"

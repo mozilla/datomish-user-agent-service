@@ -40,7 +40,7 @@
   (doto (-> express .Router)
 
     ;; TODO: write a small macro to cut down this boilerplate.
-    (.post "/session/start"
+    (.post "/sessions/start"
            (auto-caught-route-error
              (fn [req]
                (-> req
@@ -59,7 +59,7 @@
                                                         :scope (aget req "body" "scope")}))]
                    (.json res (clj->js {:session session})))))))
 
-    (.post "/session/end"
+    (.post "/sessions/end"
            (auto-caught-route-error
              (fn [req]
                (-> req
@@ -73,7 +73,7 @@
                                                {:session (aget req "body" "session")}))]
                    (.json res (clj->js {})))))))
 
-    (.post "/visits"
+    (.post "/visits/visit"
            (auto-caught-route-error
              (fn [req]
                (-> req
@@ -107,7 +107,7 @@
               (go-pair
                 (let [results (<? (api/<visited (d/db (<? connection-pair-chan)) ;; TODO -- unify on conn over db?
                                                 {:limit (int (aget req "query" "limit"))}))]
-                  (.json res (clj->js {:pages results})))))))
+                  (.json res (clj->js {:results results})))))))
 
     (.post "/stars/star"
            (auto-caught-route-error
@@ -168,7 +168,7 @@
                                                       ))]
                   (.json res (clj->js {:results results})))))))
 
-    (.post "/pages"
+    (.post "/pages/page"
            (auto-caught-route-error
              (fn [req]
                (-> req
@@ -199,7 +199,7 @@
                    ;; TODO: dispatch bookmark diffs to WS.
                    (.json res (clj->js {})))))))
 
-    (.get "/query"
+    (.get "/pages"
           (auto-caught-route-error
             (fn [req]
               (-> req

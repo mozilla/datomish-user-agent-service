@@ -10,6 +10,7 @@
       [cljs.core.async.macros :as a :refer [go]]))
   (:require
    [datomish.api :as d]
+   [datomish.transact] ;; Otherwise, no IConnection.close.
    [datomish.util :as util]
    #?@(:clj [
              ;; [datomish.jdbc-sqlite]
@@ -268,7 +269,7 @@
             [(get-else $ ?save :save/title "") ?title]
             [(get-else $ ?save :save/excerpt "") ?excerpt]]))
       (map (fn [[page url title excerpt]]
-             {:url url :title title :excerpt excerpt :snippet nil :lastVisited nil})))))
+             {:url url :title title :excerpt excerpt :snippet "" :lastVisited nil})))))
 
 ;; TODO: limit, since.
 ;; TODO: return lastVisited, sort by lastVisited.
@@ -287,7 +288,7 @@
                    '[(get-else $ ?save :save/title "") ?title]
                    '[(get-else $ ?save :save/excerpt "") ?excerpt]]}))
       (map (fn [[page url title excerpt]]
-             {:url url :title title :excerpt excerpt :snippet nil :lastVisited nil})))))
+             {:url url :title title :excerpt excerpt :snippet "" :lastVisited nil})))))
 
 ;; TODO: return ID?
 (defn <add-visit [conn {:keys [url uri title session]}]
@@ -335,7 +336,7 @@
                         :order-by [[:_max_time :desc]]
                         :inputs {:since since}}))]
         (map (fn [[url title lastVisited]]
-               {:url url :title title :lastVisited lastVisited})
+               {:url url :title title :lastVisited lastVisited :snippet ""})
              rows)))))
 
 (defn <find-title [db url]
