@@ -1,3 +1,5 @@
+require('source-map-support').install();
+
 var d = require('../target/release-node/datomish_user_agent_service');
 console.log("require succeeded!");
 

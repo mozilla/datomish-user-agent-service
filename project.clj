@@ -76,17 +76,16 @@
                  :optimizations  :advanced
                  :externs        ["src/datomish_user_agent_service/externs/datomish_user_agent_service.js"]
                  :output-dir     "target/release-node"
-                 :output-to      "target/release-node/datomish_user_agent_service.bare.js"
+                 :output-to      "target/release-node/datomish_user_agent_service.js"
                  :output-wrapper false
-                 :source-map-timestamp true
-                 :source-map     "target/release-node/datomish_user_agent_service.bare.js.map"
+                 ;; :source-map-timestamp true ;; yields ...server.cljs?rel=<TIMESTAMP>:107:15
+                 :source-map     "target/release-node/datomish_user_agent_service.js.map"
                  :parallel-build true
                  :pretty-print   true
                  :pseudo-names   true
                  :static-fns     true
                  :target         :nodejs
-                 }
-                :notify-command ["release-node/wrap_bare.sh"]}
+                 }}
                ]}
 
   :figwheel {;; :http-server-root "public" ;; default and assumes "resources"

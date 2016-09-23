@@ -1,6 +1,0 @@
-
-        ;return this.datomish_user_agent_service.js;
-
-    }.call({});
-
-});
