@@ -10,11 +10,6 @@
 
 (enable-console-print!)
 
-(defn on-js-reload []
-  (js/console.log "on-js-reload"))
-
-(defonce http (nodejs/require "http"))
-
 ;; Define your app data so that it doesn't get over-written on reload.
 ;; This is tricky, since we can't use a top-level go-pair (see
 ;; http://dev.clojure.org/jira/browse/ASYNC-110).  Instead we fill a
@@ -23,23 +18,36 @@
 (defonce connection-pair-chan
   (a/promise-chan))
 
+(defn on-js-reload []
+  (js/console.log "on-js-reload"))
+
 (def app (server/app connection-pair-chan))
 
-(defn server [port]
-  ;; This is the secret sauce. you want to capture a reference to the app function (don't use it
-  ;; directly) this allows it to be redefined on each reload this allows you to change routes and
-  ;; have them hot loaded as you code.
-  (doto (.createServer http #(app %1 %2))
-    (.listen port)))
+;; We want to refer to app by name; partial captures the value at
+;; definition time.
+(defn- handle [& rest]
+  (println "handler" app rest)
+  (apply app rest))
 
 (defn -main []
+  (.on js/process "uncaughtException" (fn [err]
+                                        (println (aget err "stack"))
+                                        (js/process.exit 101)))
+
+  (.on js/process "unhandledRejection" (fn [reason p]
+                                         (println (aget reason "stack"))
+                                         (js/process.exit 102)))
+
   (a/take!
     (go-pair
       (js/console.log "Opening Datomish knowledge-base.")
       (let [c (<? (d/<connect "")) ;; In-memory for now.
-            _ (<? (d/<transact! c api/tofino-schema))]
+            _ (<? (d/<transact! c api/tofino-schema))
+            ]
         c))
     (partial a/offer! connection-pair-chan))
-  (server 3000))
+
+  (let [[start stop] (server/createServer handle {:port 9090})]
+    (start)))
 
 (set! *main-cli-fn* -main) ;; this is required

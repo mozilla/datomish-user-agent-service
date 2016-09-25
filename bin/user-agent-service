@@ -103,13 +103,18 @@ argParser.option('p', {
 });
 
 const argv2 = argParser.argv;
+argv2.db = `${argv2.profile}/browser-datomish.db`;
 
 UserAgentService({
   port: argv2.port,
-  db: `${argv2.profile}/browser.db`,
+  db: argv2.db,
   version: argv2.version,
   contentServiceOrigin: argv2.contentServiceOrigin,
+}).then(([start, stop]) => {
+  start();
 });
+
+console.log(`Started Datomish User Agent Service at http://127.0.0.1:${argv2.port}/${argv2.version} serving ${argv2.db}`);
 
 // if (argv.repl) {
 //   repl.start();

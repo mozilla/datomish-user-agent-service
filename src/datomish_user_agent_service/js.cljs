@@ -20,7 +20,17 @@
    [datomish-user-agent-service.server :as server]
    ))
 
+(enable-console-print!)
+
 (defonce http (nodejs/require "http"))
+
+(defn- kb-promise [path]
+  (go-promise
+    identity
+
+    (let [c (<? (d/<connect path)) ;; In-memory for now.
+          _ (<? (d/<transact! c api/tofino-schema))] ;; TODO: don't do try to write.
+      c)))
 
 (defn ^:export UserAgentService [options]
   (go-promise
@@ -39,36 +49,19 @@
         (throw (js/Error. "UserAgentService requires a `contentServiceOrigin` string.")))
 
       (let [{:keys [port db version contentServiceOrigin]} options]
-        (println "Opening Datomish knowledge-base at" (:db options))
+        (println "Opening Datomish knowledge-base at" db)
 
-        (let [c (go-pair ;; Blocked on (repeatedly!) in server/app.  This is just one way to async sequence.
-                  (let [c (<? (d/<connect db)) ;; In-memory for now.
-                        _ (<? (d/<transact! c api/tofino-schema))] ;; TODO: don't do try to write.
-                    c))
+        (let [connection-pair-chan
+              ;; Blocked on (repeatedly!) in server/app.  This works around issues I was seeing
+              ;; using a promise-chan in this way.
+              (cljs-promises.async/pair-port (kb-promise db))
 
               app
-              (server/app c)
-              
-              server
-              (doto (.createServer http #(app %1 %2))
-                (.listen port))
+              (server/app connection-pair-chan)
 
-              stop
-              (fn []
-                ;; TODO: close DB before exiting process.
-                (go-promise
-                  identity
-
-                  (<? (d/<close (<? c)))
-
-                  ;; A promise that returns a promise.
-                  (promise (fn [resolve reject]
-                             (.close server (fn [err] (if err
-                                                        (reject err)                             
-                                                        (do
-                                                          (resolve)))))))))
-              ]
-          stop)))))
+              [start stop]
+              (server/createServer app {:port port})]
+          [start stop])))))
 
 (defn -main [])
 (set! *main-cli-fn* -main)

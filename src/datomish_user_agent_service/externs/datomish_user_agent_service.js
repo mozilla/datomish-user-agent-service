@@ -147,6 +147,14 @@ express.Router.prototype.post = function(path, func) {};
  */
 express.Router.prototype.delete = function(path, func) {};
 
+var expressWs;
+expressWs.extendExpress = function() {};
+expressWs.createWebSocketServer = function(module, server, handler) {};
+
+express.Router.prototype.ws = function(path, func) {};
+express.Router.prototype.websocket = function(path, func) {};
+express.Router.prototype.on = function(event, func) {};
+
 express.request.prototype.checkBody = function(value) {};
 express.request.prototype.checkQuery = function(value) {};
 express.request.prototype.optional = function(value) {};
@@ -157,6 +165,8 @@ express.request.prototype.validationErrors = function(value) {};
 express.response.prototype.status = function(value) {};
 express.response.prototype.send = function(value) {};
 express.response.prototype.json = function(value) {};
+
+function morgan(style) {};
 
 var http = {};
 

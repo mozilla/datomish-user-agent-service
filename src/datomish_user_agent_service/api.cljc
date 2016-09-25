@@ -39,6 +39,7 @@
   [{:db/id (d/id-literal :db.part/user)
     :db/ident              :page/url
     :db/valueType          :db.type/string          ; Because not all URLs are java.net.URIs. For JS we may want to use /uri.
+    :db/fulltext           true
     :db/cardinality        :db.cardinality/one
     :db/unique             :db.unique/identity
     :db/doc                "A page's URL."
@@ -46,6 +47,7 @@
    {:db/id (d/id-literal :db.part/user)
     :db/ident              :page/title
     :db/valueType          :db.type/string
+    :db/fulltext           true
     :db/cardinality        :db.cardinality/one      ; We supersede as we see new titles.
     :db/doc                "A page's title."
     :db.install/_attribute :db.part/db}
