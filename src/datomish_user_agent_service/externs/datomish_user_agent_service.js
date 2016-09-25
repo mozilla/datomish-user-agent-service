@@ -155,6 +155,7 @@ express.Router.prototype.ws = function(path, func) {};
 express.Router.prototype.websocket = function(path, func) {};
 express.Router.prototype.on = function(event, func) {};
 
+express.request.prototype.get = function(key) {};
 express.request.prototype.checkBody = function(value) {};
 express.request.prototype.checkQuery = function(value) {};
 express.request.prototype.optional = function(value) {};
@@ -165,6 +166,7 @@ express.request.prototype.validationErrors = function(value) {};
 express.response.prototype.status = function(value) {};
 express.response.prototype.send = function(value) {};
 express.response.prototype.json = function(value) {};
+express.response.prototype.header = function(key, value) {};
 
 function morgan(style) {};
 

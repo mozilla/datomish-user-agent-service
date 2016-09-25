@@ -282,6 +282,22 @@
                                                                       ))]
                     (.json res (clj->js {:results results}))))))))))
 
+(defn cross-origin-handler [contentServiceOrigin]
+  (fn [req res next]
+    (let [origin (.get req "origin")]
+      (println "origin" origin)
+      (when (and origin (clojure.string/starts-with? origin contentServiceOrigin))
+        ;; For some reason, setting the `Access-Control-Allow-Origin` header to the
+        ;; `contentServiceOrigin` value doesn't work for our custom `tofino://` http scheme, when
+        ;; receiving requests from electron. For example, when allowing origin `tofino://` and the
+        ;; request is from `tofino://history`, CORS won't work even though it should. As a
+        ;; workaround, whitelist directly.
+        (doto res
+          (.header "Access-Control-Allow-Origin" origin)
+          (.header "Access-Control-Allow-Methods" "GET,PUT,POST,DELETE")
+          (.header "Access-Control-Allow-Headers" "Content-Type")))
+      (next))))
+
 (defn- log-handler [req res next]
   (println "req" req)
   (next))
@@ -304,6 +320,7 @@
         app
         (doto (express)
           (.use log-handler)
+          (.use (cross-origin-handler "tofino://")) ;; TODO: parameterize origin.
 
           (.use (.json bodyParser))
           (.use (expressValidator))
