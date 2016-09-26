@@ -22,6 +22,7 @@
 ;; Monkeypatch!
 (.extendExpress expressWs #js {})
 (defonce bodyParser (nodejs/require "body-parser"))
+(defonce morgan (nodejs/require "morgan"))
 
 ;; TODO: validate in CLJS.
 (defn- auto-caught-route-error [validator method]
@@ -298,10 +299,6 @@
           (.header "Access-Control-Allow-Headers" "Content-Type")))
       (next))))
 
-(defn- log-handler [req res next]
-  (println "req" req)
-  (next))
-
 (defn- error-handler [err req res next]
   (doto res
     (.status 500)
@@ -319,7 +316,8 @@
 
         app
         (doto (express)
-          (.use log-handler)
+          (.use (morgan "dev"))
+
           (.use (cross-origin-handler "tofino://")) ;; TODO: parameterize origin.
 
           (.use (.json bodyParser))
