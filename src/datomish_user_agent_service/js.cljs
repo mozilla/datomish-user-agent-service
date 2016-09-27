@@ -16,21 +16,12 @@
    [datomish.cljify :refer [cljify]]
    [datomish.promises]
    [datomish.pair-chan]
-   [datomish-user-agent-service.api :as api]
    [datomish-user-agent-service.server :as server]
    ))
 
 (enable-console-print!)
 
 (defonce http (nodejs/require "http"))
-
-(defn- kb-promise [path]
-  (go-promise
-    identity
-
-    (let [c (<? (d/<connect path)) ;; In-memory for now.
-          _ (<? (d/<transact! c api/tofino-schema))] ;; TODO: don't do try to write.
-      c)))
 
 (defn ^:export UserAgentService [options]
   (go-promise
@@ -52,9 +43,7 @@
         (println "Opening Datomish knowledge-base at" db)
 
         (let [connection-pair-chan
-              ;; Blocked on (repeatedly!) in server/app.  This works around issues I was seeing
-              ;; using a promise-chan in this way.
-              (cljs-promises.async/pair-port (kb-promise db))
+              (server/<connect db)
 
               app
               (server/app connection-pair-chan)

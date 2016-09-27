@@ -22,13 +22,31 @@
    [datomish.js-sqlite] ;; Otherwise, we won't have the ISQLiteConnectionFactory defns.
    [datomish.pair-chan]
    [datomish.util]
+
+   [datomish-user-agent-service.api :as api]
    [datomish-user-agent-service.core :as core]
+   [datomish-user-agent-service.server :as server]
    ))
+
+(.install (nodejs/require "source-map-support"))
 
 (nodejs/require "isomorphic-fetch")
 
 ;; TODO: consider doing this locally.
 (cljs-promises.async/extend-promises-as-pair-channels!)
+
+(defn <server [port]
+  (go-pair
+    (let [connection-pair-chan
+          (server/<connect "") ;; The channel, not the value!
+
+          app
+          (server/app connection-pair-chan)
+
+          [start stop]
+          (server/createServer app {:port port})]
+      (start)
+      stop)))
 
 (defn <fetch
   ([url]
@@ -64,13 +82,13 @@
   (map #(dissoc % key) pages))
 
 (deftest-async test-heartbeat
-  (let [server (core/server 3002)]
+  (let [stop (<? (<server 3002))]
     (try
       (is (= (<? (<get "http://localhost:3002/__heartbeat__")) {:version "v1"}))
-      (finally (.close server)))))
+      (finally (<? (stop))))))
 
 (deftest-async test-session
-  (let [server (core/server 3002)]
+  (let [stop (<? (<server 3002))]
     (try
       (let [{s1 :session} (<? (<post "http://localhost:3002/v1/sessions/start" {}))
             {s2 :session} (<? (<post "http://localhost:3002/v1/sessions/start" {:scope s1}))]
@@ -84,10 +102,10 @@
         ;; TODO: 404 the second time through.
         (is (= (<? (<post "http://localhost:3002/v1/sessions/end" {:session s1})) {})))
 
-      (finally (.close server)))))
+      (finally (<? (stop))))))
 
 (deftest-async test-visits
-  (let [server (core/server 3002)]
+  (let [stop (<? (<server 3002))]
     (try
       (let [{s :session} (<? (<post "http://localhost:3002/v1/sessions/start" {}))]
         ;; No title.
@@ -101,19 +119,22 @@
                {}))
         ;; TODO: 400 with no URL or no session (or invalid URL?).
 
-        (is (= (dissoc-timestamps :lastVisited (:pages (<? (<get "http://localhost:3002/v1/visits?limit=2"))))
+        (is (= (dissoc-timestamps :lastVisited (:results (<? (<get "http://localhost:3002/v1/visits?limit=2"))))
                [{:url "https://www.mozilla.org/en-US/firefox/new/",
-                 :title "Download Firefox - Free Web Browser"}
+                 :title "Download Firefox - Free Web Browser"
+                 :snippet ""}
                 {:url "https://reddit.com/",
-                 :title ""}]))
+                 :title ""
+                 :snippet ""}]))
 
-        (is (= (dissoc-timestamps :lastVisited (:pages (<? (<get "http://localhost:3002/v1/visits?limit=1"))))
+        (is (= (dissoc-timestamps :lastVisited (:results (<? (<get "http://localhost:3002/v1/visits?limit=1"))))
                [{:url "https://www.mozilla.org/en-US/firefox/new/",
-                 :title "Download Firefox - Free Web Browser"}])))
-      (finally (.close server)))))
+                 :title "Download Firefox - Free Web Browser"
+                 :snippet ""}])))
+      (finally (<? (stop))))))
 
 (deftest-async test-stars
-  (let [server (core/server 3002)]
+  (let [stop (<? (<server 3002))]
     (try
       (let [{s :session} (<? (<post "http://localhost:3002/v1/sessions/start" {}))]
         ;; TODO: Allow no title.
@@ -153,13 +174,13 @@
                 ]))
 
         )
-      (finally (.close server)))))
+      (finally (<? (stop))))))
 
 (deftest-async test-page-details
-  (let [server (core/server 3002)]
+  (let [stop (<? (<server 3002))]
     (try
       (let [{s :session} (<? (<post "http://localhost:3002/v1/sessions/start" {}))]
-        (is (= (<? (<post "http://localhost:3002/v1/pages"
+        (is (= (<? (<post "http://localhost:3002/v1/pages/page"
                           {:session s
                            :url "https://test.domain/"
                            :page {:title "test title"
@@ -168,7 +189,7 @@
                                   }}))
                {}))
 
-        (is (= (<? (<post "http://localhost:3002/v1/pages"
+        (is (= (<? (<post "http://localhost:3002/v1/pages/page"
                           {:session s
                            :url "https://another.domain/"
                            :page {:title "another title"
@@ -177,17 +198,17 @@
                                   }}))
                {}))
 
-        (is (= (dissoc-timestamps :lastVisited (:results (<? (<get "http://localhost:3002/v1/query?q=Long%20text&snippetSize=tiny"))))
+        (is (= (dissoc-timestamps :lastVisited (:results (<? (<get "http://localhost:3002/v1/pages?q=Long%20text&snippetSize=tiny"))))
                [{:url "https://test.domain/",
                  :title "test title"
                  :excerpt "excerpt from test.domain"
-                 :snippet nil ;; TODO: support snippets.
+                 :snippet "" ;; TODO: support snippets.
                  ;; :snippet "<b>Long</b> <b>text</b> content containing excerpt…"
                  }
                 {:url "https://another.domain/",
                  :title "another title"
                  :excerpt "excerpt from another.domain"
-                 :snippet nil
+                 :snippet ""
                  ;; :snippet "<b>Long</b> <b>text</b> content containing excerpt…"
                  }
                 ]))
@@ -200,4 +221,4 @@
         ;;         ]))
 
         )
-      (finally (.close server)))))
+      (finally (<? (stop))))))

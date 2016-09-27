@@ -353,3 +353,13 @@
                                                 (reject err)
                                                 (resolve)))))))]
     [start stop server]))
+
+(defn <connect [path]
+  ;; Using pair-port and go-promise works around issues seen using a promise-chan in this way.
+  (cljs-promises.async/pair-port
+    (go-promise
+      identity
+
+      (let [c (<? (d/<connect path))
+            _ (<? (d/<transact! c api/tofino-schema))] ;; TODO: don't do try to write.
+        c))))

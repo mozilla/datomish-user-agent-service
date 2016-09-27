@@ -39,12 +39,7 @@
                                          (js/process.exit 102)))
 
   (a/take!
-    (go-pair
-      (js/console.log "Opening Datomish knowledge-base.")
-      (let [c (<? (d/<connect "")) ;; In-memory for now.
-            _ (<? (d/<transact! c api/tofino-schema))
-            ]
-        c))
+    (server/<connect "") ;; In-memory for now.
     (partial a/offer! connection-pair-chan))
 
   (let [[start stop] (server/createServer handle {:port 9090})]
