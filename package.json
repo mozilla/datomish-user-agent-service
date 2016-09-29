@@ -3,7 +3,7 @@
   "engines": {
     "node": "6.x.x"
   },
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A Tofino User Agent Service built on top of Datomish.",
   "dependencies": {
     "appdirectory": "0.1.0",
@@ -31,6 +31,8 @@
   "homepage": "https://github.com/mozilla/datomish-user-agent-service#readme",
   "main": "./target/release-node/datomish_user_agent_service.js",
   "files": [
+    "README.md",
+    "docs",
     "bin",
     "target/release-node/datomish_user_agent_service.js"
   ]
