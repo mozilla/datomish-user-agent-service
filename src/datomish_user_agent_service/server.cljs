@@ -1,3 +1,7 @@
+;; This Source Code Form is subject to the terms of the Mozilla Public
+;; License, v. 2.0. If a copy of the MPL was not distributed with this
+;; file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
 (ns ^:figwheel-always datomish-user-agent-service.server
   (:require-macros
    [datomish.pair-chan :refer [go-pair <?]]
@@ -166,11 +170,14 @@
           (go-promise
             identity
 
-            (let [results (<? (api/<starred-pages (d/db (<? connection-pair-chan)) ;; TODO -- unify on conn over db?
-                                                  {:limit 100} ;; TODO - js/Number.MAX_SAFE_INTEGER
-                                                  ))]
-              (<? (diff "PROFILE_DIFF_BOOKMARKS" (map :url results)))
-              (<? (diff "PROFILE_DIFF_RECENT_BOOKMARKS" (map :url results))))))
+            (let [results
+                  (->>
+                    (<? (api/<starred-pages (d/db (<? connection-pair-chan))
+                                            {:limit 100} ;; TODO - js/Number.MAX_SAFE_INTEGER
+                                            ))
+                    (map :url))]
+              (<? (diff "PROFILE_DIFF_BOOKMARKS" results))
+              (<? (diff "PROFILE_DIFF_RECENT_BOOKMARKS" results)))))
         ]
 
     (doto (-> express .Router)
@@ -260,7 +267,7 @@
                 )
               (fn [req res]
                 (go-pair
-                  (let [results (<? (api/<visited (d/db (<? connection-pair-chan)) ;; TODO -- unify on conn over db?
+                  (let [results (<? (api/<visited (d/db (<? connection-pair-chan))
                                                   {:limit (int (aget req "query" "limit"))}))]
                     (.json res (clj->js {:results results})))))))
 
@@ -324,7 +331,7 @@
                 )
               (fn [req res]
                 (go-pair
-                  (let [results (<? (api/<starred-pages (d/db (<? connection-pair-chan)) ;; TODO -- unify on conn over db?
+                  (let [results (<? (api/<starred-pages (d/db (<? connection-pair-chan))
                                                         {:limit (int (or (aget req "query" "limit") 100))} ;; TODO - js/Number.MAX_SAFE_INTEGER
                                                         ))]
                     (.json res (clj->js {:results results})))))))
@@ -379,7 +386,7 @@
                 )
               (fn [req res]
                 (go-pair
-                  (let [results (<? (api/<saved-pages-matching-string (d/db (<? connection-pair-chan)) ;; TODO -- unify on conn over db?
+                  (let [results (<? (api/<saved-pages-matching-string (d/db (<? connection-pair-chan))
                                                                       (aget req "query" "q")
                                                                       ;; {:limit (int (or (-> req .-query .-limit) 100))} ;; TODO - js/Number.MAX_SAFE_INTEGER
                                                                       ))]

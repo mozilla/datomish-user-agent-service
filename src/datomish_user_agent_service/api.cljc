@@ -277,7 +277,7 @@
 ;; TODO: return lastVisited, sort by lastVisited.
 ;; TODO: support snippet extraction.
 (defn <saved-pages-matching-string [db string]
-  (let [string (str "*" string "*")] ;; Wildcard match.
+  (let [string (str "*" string "*")] ;; Wildcard match.  TODO: escape string properly.
     (go-pair
       (->>
         (concat ;; Manual or-join until Datomish supports it.
