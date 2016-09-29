@@ -155,6 +155,8 @@ express.Router.prototype.ws = function(path, func) {};
 express.Router.prototype.websocket = function(path, func) {};
 express.Router.prototype.on = function(event, func) {};
 
+express.request.prototype.accepts = function(mimeType) {};
+express.request.prototype.is = function(mimeType) {};
 express.request.prototype.get = function(key) {};
 express.request.prototype.checkBody = function(value) {};
 express.request.prototype.checkQuery = function(value) {};
@@ -164,11 +166,19 @@ express.request.prototype.isInt = function(value) {};
 express.request.prototype.validationErrors = function(value) {};
 
 express.response.prototype.status = function(value) {};
+express.response.prototype.set = function(value) {};
 express.response.prototype.send = function(value) {};
 express.response.prototype.json = function(value) {};
 express.response.prototype.header = function(key, value) {};
 
+express.static = function(path) {};
+
 function morgan(style) {};
+
+var bodyParser;
+bodyParser.prototype.json = function(options) {};
+bodyParser.prototype.text = function(options) {};
+bodyParser.prototype.urlencoded = function(options) {};
 
 var http = {};
 

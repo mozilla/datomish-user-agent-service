@@ -4,14 +4,50 @@
    [datomish.promises :refer [go-promise]]
    [cljs.core.async.macros :refer [go]])
   (:require [cljs.nodejs :as nodejs]
+            [cljs.reader]
             [cljs-promises.async]
             [cljs-promises.core :refer [promise]]
             [datomish.api :as d]
+            [datomish.datom]
+            [datomish.db]
             [datomish.js-sqlite] ;; Otherwise, we won't have the ISQLiteConnectionFactory defns.
             [datomish.pair-chan]
             [datomish.promises]
             [datomish-user-agent-service.api :as api]
             [cljs.core.async :as a :refer [chan <! >!]]))
+
+;; TODO: move this to Datomish.
+;; TODO: figure out what to do with TempIds in JS.
+(extend-type datomish.datom/Datom
+  IEncodeJS
+  (-clj->js [d] (clj->js {:e (.-e d) :a (.-a d) :v (.-v d) :tx (.-tx d) :added (.-added d)})))
+
+(extend-type datomish.datom/Datom
+  IPrintWithWriter
+  (-pr-writer [d writer opts]
+    (pr-sequential-writer writer pr-writer
+                          "#db/datom [" " " "]"
+                          opts [(.-e d) (.-a d) (.-v d) (.-tx d) (.-added d)])))
+
+(extend-type datomish.db/TempId
+  IPrintWithWriter
+  (-pr-writer [id-literal writer opts]
+    (pr-sequential-writer writer pr-writer
+                          "#db/id [" " " "]"
+                          opts [(:part id-literal) (:idx id-literal)])))
+
+(extend-type datomish.db/LookupRef
+  IPrintWithWriter
+  (-pr-writer [id-literal writer opts]
+    (pr-sequential-writer writer pr-writer
+                          "#db/ref [" " " "]"
+                          opts [(:a id-literal) (:v id-literal)])))
+
+(cljs.reader/register-tag-parser! "db/datom" (partial apply datomish.datom/datom))
+
+(cljs.reader/register-tag-parser! "db/id" (partial apply datomish.db/id-literal))
+
+(cljs.reader/register-tag-parser! "db/ref" (partial apply datomish.db/lookup-ref))
 
 (.install (nodejs/require "source-map-support"))
 
@@ -47,7 +83,73 @@
             (.json (clj->js {:error (clojure.string/split (aget e "stack") "\n")})))
           )))))
 
-(defn- router [connection-pair-chan]
+(defn- api-router [connection-pair-chan]
+  ;; TODO: use transaction listeners to propagate diffs independent of /v1 namespace.
+  (doto (-> express .Router)
+
+    (.get "/query"
+          (auto-caught-route-error
+            (fn [req]
+              (-> req
+                  (.checkQuery "q")
+                  (.notEmpty))
+              (-> req
+                  (.checkQuery "limit") ;; TODO: respect limit; or remove limit parameter and use rnewman's `args`.
+                  (.optional)
+                  (.isInt)))
+            (fn [req res]
+              (go-pair
+                (let [q-str   (aget req "query" "q")
+                      q-edn   (cljs.reader/read-string q-str)
+                      results (<? (d/<q (d/db (<? connection-pair-chan)) q-edn))]
+                  (cond
+                    (.accepts req "json")
+                    (doto res
+                      (.json (clj->js results)))
+
+                    (.accepts req "application/edn")
+                    (doto res
+                      (.set "Content-Type" "application/edn") ;; TODO: charset?
+                      (.send (prn-str results)))
+
+                    :default
+                    (doto res
+                      (.status 406)
+                      (.send #js {:error "Not Acceptable"}))
+                    ))))))
+
+    (.post "/transact"
+           (auto-caught-route-error
+             (fn [req])
+             (fn [req res]
+               (go-pair
+                 (if-not (.is req "application/edn") ;; TODO: accept application/json?
+                   (doto res
+                     (.status 415)
+                     (.json (clj->js {:error "Unsupported Media Type"})))
+                   (let [body    (aget req "body")
+                         edn     (cljs.reader/read-string body)
+                         tx-data (:tx-data edn)
+                         report  (<? (d/<transact! (<? connection-pair-chan) tx-data))
+                         results (select-keys report [:tx-data :tempids])]
+                     (cond
+                       (.accepts req "json")
+                       (doto res
+                         (.json (clj->js results)))
+
+                       (.accepts req "application/edn")
+                       (doto res
+                         (.set "Content-Type" "application/edn") ;; TODO: charset?
+                         (.send (prn-str results)))
+
+                       :default
+                       (doto res
+                         (.status 406)
+                         (.send #js {:error "Not Acceptable"}))
+                       )))))))
+    ))
+
+(defn- v1-router [connection-pair-chan]
   (let [ws-clients
         (atom #{})
 
@@ -281,12 +383,12 @@
                                                                       (aget req "query" "q")
                                                                       ;; {:limit (int (or (-> req .-query .-limit) 100))} ;; TODO - js/Number.MAX_SAFE_INTEGER
                                                                       ))]
-                    (.json res (clj->js {:results results}))))))))))
+                    (.json res (clj->js {:results results})))))))
+      )))
 
 (defn cross-origin-handler [contentServiceOrigin]
   (fn [req res next]
     (let [origin (.get req "origin")]
-      (println "origin" origin)
       (when (and origin (clojure.string/starts-with? origin contentServiceOrigin))
         ;; For some reason, setting the `Access-Control-Allow-Origin` header to the
         ;; `contentServiceOrigin` value doesn't work for our custom `tofino://` http scheme, when
@@ -311,25 +413,24 @@
 
 ;; TODO: logging throughout.
 (defn app [connection-pair-chan]
-  (let [router
-        (router connection-pair-chan)
+  (doto (express)
+    (.use (morgan "dev"))
 
-        app
-        (doto (express)
-          (.use (morgan "dev"))
+    (.use (cross-origin-handler "tofino://")) ;; TODO: parameterize origin.
 
-          (.use (cross-origin-handler "tofino://")) ;; TODO: parameterize origin.
+    (.use (.json bodyParser #js {:type "application/json"}))
+    (.use (.text bodyParser #js {:type "application/edn"}))
+    (.use (.urlencoded bodyParser #js {:extended false :type "application/x-www-form-urlencoded"}))
 
-          (.use (.json bodyParser))
-          (.use (expressValidator))
-          (.use "/v1" router)
+    (.use (expressValidator))
+    (.use "/v1" (v1-router connection-pair-chan))
+    (.use "/api" (api-router connection-pair-chan))
 
-          (.get "/__heartbeat__"
-                (fn [req res] (.json res (clj->js {:version "v1"}))))
+    (.get "/__heartbeat__"
+          (fn [req res] (.json res (clj->js {:version "v1"}))))
 
-          (.use not-found-handler)
-          (.use error-handler))]
-    app))
+    (.use not-found-handler)
+    (.use error-handler)))
 
 (defn createServer [request-listener {:keys [port]
                                       :or {port 9090}}]

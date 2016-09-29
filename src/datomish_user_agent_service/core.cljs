@@ -26,7 +26,6 @@
 ;; We want to refer to app by name; partial captures the value at
 ;; definition time.
 (defn- handle [& rest]
-  (println "handler" app rest)
   (apply app rest))
 
 (defn -main []
