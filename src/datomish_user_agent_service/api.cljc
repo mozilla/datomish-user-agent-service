@@ -255,10 +255,11 @@
          (when content
            {:save/content content}))])))
 
-;; TODO: limit, since.
+;; TODO: use since.
 ;; TODO: return lastVisited, sort by lastVisited.
 ;; TODO: support snippet extraction.
-(defn <saved-pages [db]
+(defn <saved-pages [db {:keys [limit since]
+                        :or {:limit 10}}]
   (go-pair
     (->>
       (<?
@@ -268,9 +269,12 @@
             :in $
             :where
             [?save :save/page ?page]
+            [?save :save/savedAt ?instant]
             [?page :page/url ?url]
             [(get-else $ ?save :save/title "") ?title]
-            [(get-else $ ?save :save/excerpt "") ?excerpt]]))
+            [(get-else $ ?save :save/excerpt "") ?excerpt]]
+          {:limit limit
+           :order-by [[:instant :desc]]}))
       (map (fn [[page url title excerpt]]
              {:url url :title title :excerpt excerpt :snippet "" :lastVisited nil})))))
 
