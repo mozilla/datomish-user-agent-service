@@ -60,6 +60,7 @@
    {:db/id (d/id-literal :db.part/user)
     :db/ident              :page/visit
     :db/valueType          :db.type/ref
+    :db/unique             :db.unique/value
     :db/cardinality        :db.cardinality/many
     :db/doc                "A visit to the page."
     :db.install/_attribute :db.part/db}])
