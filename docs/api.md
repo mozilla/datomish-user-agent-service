@@ -31,12 +31,12 @@ snippets, which for now are HTML escaped string with bold tags
 wrapping highlighted words.  It's safe to use `innerHTML` and
 friends to render snippets in privileged UI.
 
-Throughout, timestamps are integer microseconds since the Unix epoch.
-Note that this is *not* the output of JavaScript's `Date.now()`!  Use
-a higher-resolution timing library, or (in a pinch) approximate
-microseconds using `1000 * Date.now()`.  The decision to use
-microseconds maintains compatibility with Firefox's Places database,
-which uses microseconds internally.
+Throughout, timestamps are integer microseconds since the Unix epoch. Note that
+this is *not* the output of JavaScript's `Date.now()`! Use a higher-resolution
+timing library like `node-microtime`, or (in a pinch) approximate microseconds
+using `1000 * Date.now()`. The decision to use microseconds maintains
+compatibility with Firefox's Places database, which uses microseconds
+internally.
 
 ## URL Structure
 
