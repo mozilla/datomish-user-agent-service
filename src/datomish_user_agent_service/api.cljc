@@ -69,7 +69,7 @@
   [{:db/id (d/id-literal :db.part/user)
     :db/ident              :visit/visitAt
     :db/valueType          :db.type/instant
-    :db/cardinality        :db.cardinality/many
+    :db/cardinality        :db.cardinality/one
     :db/doc                "The instant of the visit."
     :db.install/_attribute :db.part/db}])
 
