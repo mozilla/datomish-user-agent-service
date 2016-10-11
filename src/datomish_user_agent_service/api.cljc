@@ -359,13 +359,9 @@
 
 (defn <find-title [db url]
   ;; Until we support [:find ?title . :in…] we crunch this by hand.
-  (go-pair
-    (first
-      (first
-        (<?
-          (d/<q db
-                '[:find ?title :in $ ?url
-                  :where
-                  [?page :page/url ?url]
-                  [(get-else $ ?page :page/title "") ?title]]
-                {:inputs {:url url}}))))))
+  (d/<q db
+        '[:find ?title . :in $ ?url
+          :where
+          [?page :page/url ?url]
+          [(get-else $ ?page :page/title "") ?title]]
+        {:inputs {:url url}}))
