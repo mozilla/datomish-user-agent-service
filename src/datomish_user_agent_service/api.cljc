@@ -281,8 +281,8 @@
 ;; TODO: use since.
 ;; TODO: return lastVisited, sort by lastVisited.
 ;; TODO: support snippet extraction.
-(defn <saved-pages-matching-string [db string {:keys [limit since]
-                                               :or {:limit 10}}]
+(defn <pages-matching-string [db string {:keys [limit since]
+                                         :or {:limit 10}}]
   (let [string (str "*" string "*")] ;; Wildcard match.  TODO: escape string properly.
     (go-pair
       (->>

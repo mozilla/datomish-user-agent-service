@@ -386,10 +386,11 @@
                 )
               (fn [req res]
                 (go-pair
-                  (let [results (<? (api/<saved-pages-matching-string (d/db (<? connection-pair-chan))
-                                                                      (aget req "query" "q")
-                                                                      {:limit (int (or (-> req .-query .-limit) 10))} ;; TODO - js/Number.MAX_SAFE_INTEGER
-                                                                      ))]
+                  (let [results (<? (api/<pages-matching-string
+                                      (d/db (<? connection-pair-chan))
+                                      (aget req "query" "q")
+                                      {:limit (int (or (-> req .-query .-limit) 10)) ;; TODO - js/Number.MAX_SAFE_INTEGER
+                                       :since (-> req .-query .-since)}))]
                     (.json res (clj->js {:results results})))))))
       )))
 
