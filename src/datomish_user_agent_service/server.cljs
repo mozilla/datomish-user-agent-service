@@ -388,7 +388,7 @@
                 (go-pair
                   (let [results (<? (api/<saved-pages-matching-string (d/db (<? connection-pair-chan))
                                                                       (aget req "query" "q")
-                                                                      ;; {:limit (int (or (-> req .-query .-limit) 100))} ;; TODO - js/Number.MAX_SAFE_INTEGER
+                                                                      {:limit (int (or (-> req .-query .-limit) 10))} ;; TODO - js/Number.MAX_SAFE_INTEGER
                                                                       ))]
                     (.json res (clj->js {:results results})))))))
       )))

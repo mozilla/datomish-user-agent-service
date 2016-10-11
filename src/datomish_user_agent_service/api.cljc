@@ -278,10 +278,11 @@
       (map (fn [[page url title excerpt]]
              {:url url :title title :excerpt excerpt :snippet "" :lastVisited nil})))))
 
-;; TODO: limit, since.
+;; TODO: use since.
 ;; TODO: return lastVisited, sort by lastVisited.
 ;; TODO: support snippet extraction.
-(defn <saved-pages-matching-string [db string]
+(defn <saved-pages-matching-string [db string {:keys [limit since]
+                                               :or {:limit 10}}]
   (let [string (str "*" string "*")] ;; Wildcard match.  TODO: escape string properly.
     (go-pair
       (->>
@@ -310,6 +311,7 @@
                 (when-not (and (clojure.string/blank? url) ;; Both should never be blank.
                                (clojure.string/blank? title))
                   {:url url :title title :excerpt excerpt :snippet "" :lastVisited nil})))
+        (take limit)
         (set)))))
 
 ;; TODO: return ID?
