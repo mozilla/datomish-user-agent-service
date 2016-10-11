@@ -286,7 +286,7 @@
         ;; TODO: return lastVisited, order by lastVisited.
         ;; TODO: use since, if present.
         query
-        '[:find [?url (max ?title)]   ; Only take one title, so we're unique on URL.
+        '[:find [?url ?title]   ; There's no more than one title per URL, so we don't need to worry about duplicate URLs.
           :in $ ?str
           :where
           (or-join [?page]
