@@ -440,8 +440,9 @@
     (.use not-found-handler)
     (.use error-handler)))
 
-(defn createServer [request-listener {:keys [port]
-                                      :or {port 9090}}]
+(defn createServer [request-listener {:keys [port hostname]
+                                      :or {port 9090
+                                           hostname "localhost"}}]
   (let [server
         (.createServer http request-listener)
 
@@ -453,7 +454,7 @@
         start
         (fn []
           (promise (fn [resolve reject]
-                     (.listen server port resolve))))
+                     (.listen server port hostname resolve))))
 
         stop
         (fn []
