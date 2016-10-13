@@ -34,3 +34,13 @@ release-node`.  That'll update the
 `target/release-node/datomish-user-agent-service.js` in place, which
 will get picked up by the bin script used by Tofino.  It works quite
 well.
+
+## Changelog
+
+### Version 0.0.3
+
+* Bump to datomish "0.1.2-SNAPSHOT" to serialize transactions
+  (https://github.com/mozilla/datomish/issues/80).  Fixes
+  https://github.com/mozilla/tofino/issues/1321.
+
+* Fix https://github.com/mozilla/datomish-user-agent-service/issues/5.
