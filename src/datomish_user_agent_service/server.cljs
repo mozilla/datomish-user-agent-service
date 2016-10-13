@@ -389,8 +389,8 @@
                   (let [results (<? (api/<pages-matching-string
                                       (d/db (<? connection-pair-chan))
                                       (aget req "query" "q")
-                                      {:limit (int (or (-> req .-query .-limit) 10)) ;; TODO - js/Number.MAX_SAFE_INTEGER
-                                       :since (-> req .-query .-since)}))]
+                                      {:limit (int (or (aget req "query" "limit") 10)) ;; TODO - js/Number.MAX_SAFE_INTEGER
+                                       :since (some-> (aget req "query" "since") int)}))]
                     (.json res (clj->js {:results results})))))))
       )))
 
