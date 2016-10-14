@@ -155,6 +155,18 @@ express.Router.prototype.ws = function(path, func) {};
 express.Router.prototype.websocket = function(path, func) {};
 express.Router.prototype.on = function(event, func) {};
 
+/**
+ * @type {object}
+ */
+express.request.prototype.log;
+
+var logger;
+logger.prototype.info = function() {};
+logger.prototype.warn = function() {};
+logger.prototype.error = function() {};
+logger.prototype.debug = function() {};
+logger.prototype.trace = function() {};
+
 express.request.prototype.accepts = function(mimeType) {};
 express.request.prototype.is = function(mimeType) {};
 express.request.prototype.get = function(key) {};

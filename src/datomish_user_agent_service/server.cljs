@@ -62,7 +62,6 @@
 ;; Monkeypatch!
 (.extendExpress expressWs #js {})
 (defonce bodyParser (nodejs/require "body-parser"))
-(defonce morgan (nodejs/require "morgan"))
 
 ;; TODO: validate in CLJS.
 (defn- auto-caught-route-error [validator method]
@@ -81,13 +80,13 @@
             ;; TODO: .catch errors in method?
             (<? (method req res next))))
         (catch :default e
-          (js/console.log "caught error" e)
+          (some-> (.log req) .warn e)
           (doto res
             (.status 500)
             (.json (clj->js {:error (clojure.string/split (aget e "stack") "\n")})))
           )))))
 
-(defn- api-router [connection-pair-chan]
+(defn- api-router [connection-pair-chan logger]
   ;; TODO: use transaction listeners to propagate diffs independent of /v1 namespace.
   (doto (-> express .Router)
 
@@ -153,17 +152,18 @@
                        )))))))
     ))
 
-(defn- v1-router [connection-pair-chan]
+(defn- v1-router [connection-pair-chan logger]
   (let [ws-clients
         (atom #{})
 
         diff
         (fn [type payload]
-          (println "Sending diff message of type" type "and payload" payload "to" (count @ws-clients) "clients")
-          (let [message (js/JSON.stringify (clj->js {:message "diff" :type type :payload payload}))]
+          (let [message (js/JSON.stringify (clj->js {:message "diff" :type type :payload payload}))
+                cs      @ws-clients]
+            (some-> logger (.debug #js {:type type :count (count cs)} "Sending diff message"))
             (go-pair
-              (doseq [ws @ws-clients]
-                (.send ws message)))))
+              (doseq [c cs]
+                (.send c message)))))
 
         send-bookmark-diffs
         (fn []
@@ -188,7 +188,13 @@
                                   identity
 
                                   (swap! ws-clients conj ws)
-                                  (.on ws "close" (fn [] (swap! ws-clients disj ws)))
+                                  (some-> logger (.info #js {:count (count @ws-clients)}
+                                                        "Connected WebSocket client"))
+
+                                  (.on ws "close" (fn []
+                                                    (swap! ws-clients disj ws)
+                                                    (some-> logger (.info #js {:count (count @ws-clients)}
+                                                                          "Disconnected WebSocket client"))))
 
                                   (.send ws (js/JSON.stringify #js {:message "protocol"
                                                                     :version "v1"
@@ -199,7 +205,6 @@
                                   (send-bookmark-diffs)
 
                                   )))))
-
 
       ;; TODO: write a small macro to cut down this boilerplate.
       (.post "/sessions/start"
@@ -419,26 +424,28 @@
     (.status 404)
     (.json (clj->js {:url (aget req "originalUrl")}))))
 
-;; TODO: logging throughout.
-(defn app [connection-pair-chan]
-  (doto (express)
-    (.use (morgan "dev"))
+(defn app [connection-pair-chan logger]
+  (let [app (express)]
+    (when logger
+      (let [bunyan-request (nodejs/require "bunyan-request")]
+        (.use app (bunyan-request #js {:logger logger}))))
 
-    (.use (cross-origin-handler "tofino://")) ;; TODO: parameterize origin.
+    (doto app
+      (.use (cross-origin-handler "tofino://")) ;; TODO: parameterize origin.
 
-    (.use (.json bodyParser #js {:type "application/json"}))
-    (.use (.text bodyParser #js {:type "application/edn"}))
-    (.use (.urlencoded bodyParser #js {:extended false :type "application/x-www-form-urlencoded"}))
+      (.use (.json bodyParser #js {:type "application/json"}))
+      (.use (.text bodyParser #js {:type "application/edn"}))
+      (.use (.urlencoded bodyParser #js {:extended false :type "application/x-www-form-urlencoded"}))
 
-    (.use (expressValidator))
-    (.use "/v1" (v1-router connection-pair-chan))
-    (.use "/api" (api-router connection-pair-chan))
+      (.use (expressValidator))
+      (.use "/v1" (v1-router connection-pair-chan logger))
+      (.use "/api" (api-router connection-pair-chan logger))
 
-    (.get "/__heartbeat__"
-          (fn [req res] (.json res (clj->js {:version "v1"}))))
+      (.get "/__heartbeat__"
+            (fn [req res] (.json res (clj->js {:version "v1"}))))
 
-    (.use not-found-handler)
-    (.use error-handler)))
+      (.use not-found-handler)
+      (.use error-handler))))
 
 (defn createServer [request-listener {:keys [port hostname]
                                       :or {port 9090
@@ -464,12 +471,17 @@
                                                 (resolve)))))))]
     [start stop server]))
 
-(defn <connect [path]
+(defn <connect [path logger]
   ;; Using pair-port and go-promise works around issues seen using a promise-chan in this way.
   (cljs-promises.async/pair-port
     (go-promise
       identity
 
+      (js/console.log "Opening Datomish knowledge base at" path " ...")
+      (some-> logger (.info #js {:path path} "Opening Datomish knowledge base..."))
+
       (let [c (<? (d/<connect path))
             _ (<? (d/<transact! c api/tofino-schema))] ;; TODO: don't do try to write.
+        (js/console.log "Opening Datomish knowledge base at" path " ... OPENED")
+        (some-> logger (.info #js {:path path} "Opening Datomish knowledge base... OPENED"))
         c))))

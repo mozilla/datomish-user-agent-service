@@ -1,3 +1,4 @@
+// -*- Mode: js2; tab-width: 2; indent-tabs-mode: nil; js2-basic-offset: 2; -*-
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -30,6 +31,7 @@ var meta = {
 var UserAgentService = require('../target/release-node/datomish_user_agent_service').UserAgentService;
 var yargs = require('yargs/yargs');
 var path = require('path');
+var bunyan = require('bunyan');
 
 // Electron sets a flag to let you know if the path to the app is included in
 // the command line arguments.
@@ -47,7 +49,7 @@ argParser
     alias: 'port',
     require: true,
     describe: 'The port that the UserAgentService will run on.',
-    type: 'number'
+    type: 'number',
   })
   .option('v', {
     alias: 'version',
@@ -60,21 +62,52 @@ argParser
     alias: 'content-service-origin',
     describe: 'The origin of the Content Service so that CORS can be enabled.',
     default: 'tofino://',
-    type: 'string'
+    type: 'string',
+  })
+  .option('stdout-log-level', {
+    describe: 'The least severe log message level to log to stdout',
+    default: (process.env.NODE_ENV === 'production') ? 'info' : 'debug',
+    type: 'string',
+  })
+  .option('file-log-level', {
+    describe: 'The least severe log message level to log to file',
+    default: 'debug',
+    type: 'string',
   });
 
 const parsedArgv = argParser.argv;
 parsedArgv.db = path.resolve(parsedArgv.profile, 'browser-datomish.db');
+parsedArgv.logFile = path.resolve(parsedArgv.profile, 'ua-service.log');
+
+const logger = bunyan.createLogger({
+  name: 'ua-service',
+  streams: [
+    { stream: process.stdout,
+      level: parsedArgv.stdoutLogLevel,
+    },
+    { type: 'rotating-file',
+      path: parsedArgv.logFile,
+      level: parsedArgv.fileLogLevel,
+      period: '1d',
+      count: 7,
+    },
+  ],
+});
+
+console.log(`Datomish User Agent Service... LOGGING AT '${parsedArgv.logFile}'`);
+process.on('exit', (code) => {
+  console.log(`Datomish User Agent Service... STOPPING WITH CODE ${code}`);
+});
 
 UserAgentService({
   port: parsedArgv.port,
   db: parsedArgv.db,
   version: parsedArgv.version,
   contentServiceOrigin: parsedArgv.contentServiceOrigin,
+  logger,
 }).then(([start, stop]) => {
-  start();
+  start().then(() => {
+    console.log(`Datomish User Agent Service... STARTED AT 'http://localhost:${parsedArgv.port}/${parsedArgv.version}'`);
+    logger.info(`Accepting CORS requests from ${parsedArgv.contentServiceOrigin}`);
+  });
 });
-
-console.log('Started Datomish User Agent Service.');
-console.log(`Listening at http://localhost:${parsedArgv.port}/${parsedArgv.version}`);
-console.log(`Accepting CORS requests from ${parsedArgv.contentServiceOrigin}`);
