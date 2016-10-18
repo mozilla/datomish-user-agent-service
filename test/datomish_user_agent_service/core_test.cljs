@@ -45,7 +45,12 @@
 
           [start stop]
           (server/createServer app {:port port})]
-      (start)
+      ;; `start` returns a promise that's resolved or rejected when the
+      ;; server is started. We use cljs-promises to turn this into a channel,
+      ;; then wait on it.
+      (<?
+        (cljs-promises.async/pair-port
+          (start)))
       stop)))
 
 (defn <fetch
