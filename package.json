@@ -3,7 +3,7 @@
   "engines": {
     "node": "6.x.x"
   },
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "A Tofino User Agent Service built on top of Datomish.",
   "dependencies": {
     "appdirectory": "0.1.0",
@@ -14,7 +14,7 @@
     "fs-extra": "0.30.0",
     "isomorphic-fetch": "2.2.1",
     "morgan": "1.7.0",
-    "promise-sqlite": "1.3.0",
+    "promise-sqlite": "1.4.0",
     "source-map-support": "ncalexan/node-source-map-support#fileUrls-plus",
     "ws": "1.1.1",
     "yargs": "5.0.0"
