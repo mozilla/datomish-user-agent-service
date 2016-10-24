@@ -28,7 +28,10 @@
     identity
 
     ;; TODO: use whatever validation library we use for body parameters.
-    (let [options (cljify options)]
+    (let [logger  (aget options "logger")
+          options (cljify options)]
+      (when-not logger
+        (throw (js/Error. "UserAgentService requires a Bunyan `logger`.")))
       (when-not (number? (:port options))
         (throw (js/Error. "UserAgentService requires a `port` number.")))
       (when-not (string? (:db options))
@@ -40,13 +43,11 @@
         (throw (js/Error. "UserAgentService requires a `contentServiceOrigin` string.")))
 
       (let [{:keys [port db version contentServiceOrigin]} options]
-        (println "Opening Datomish knowledge-base at" db)
-
         (let [connection-pair-chan
-              (server/<connect db)
+              (server/<connect db logger)
 
               app
-              (server/app connection-pair-chan)
+              (server/app connection-pair-chan logger)
 
               [start stop]
               (server/createServer app {:port port})]
