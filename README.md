@@ -18,6 +18,9 @@ Options:
 
 ## Development
 
+Download and install [Datomish](https://github.com/mozilla/datomish/)
+with `lein install` in your checkout.
+
 For running the (minimal) tests, `lein doo node test` hot reloads the
 test and package code.
 
