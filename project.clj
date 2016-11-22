@@ -3,11 +3,11 @@
   :url "https://github.com/mozilla/datomish-user-agent-service"
   :license {:name "Mozilla Public License Version 2.0"
             :url  "https://github.com/mozilla/datomish-user-agent-service/blob/master/LICENSE"}
-  :dependencies [[org.clojure/clojurescript "1.9.229"]
+  :dependencies [[org.clojure/clojurescript "1.9.293"]
                  [org.clojure/clojure "1.8.0"]
                  [org.clojure/core.async "0.2.385"]
                  [jamesmacaulay/cljs-promises "0.1.0"]
-                 [datomish "0.2.0-SNAPSHOT"]]
+                 [mozilla/datomish "0.3.1"]]
 
   :min-lein-version "2.6.1"
 
