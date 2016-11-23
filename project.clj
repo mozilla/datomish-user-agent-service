@@ -1,4 +1,4 @@
-(defproject datomish-user-agent-service "0.1.0-SNAPSHOT"
+(defproject datomish-user-agent-service "0.0.8-SNAPSHOT"
   :description "A Tofino User Agent Service built on top of Datomish."
   :url "https://github.com/mozilla/datomish-user-agent-service"
   :license {:name "Mozilla Public License Version 2.0"
