@@ -7,7 +7,7 @@
                  [org.clojure/clojure "1.8.0"]
                  [org.clojure/core.async "0.2.385"]
                  [jamesmacaulay/cljs-promises "0.1.0"]
-                 [mozilla/datomish "0.3.1"]]
+                 [mozilla/datomish "0.3.2"]]
 
   :min-lein-version "2.6.1"
 
