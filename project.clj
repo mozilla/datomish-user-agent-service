@@ -1,4 +1,4 @@
-(defproject datomish-user-agent-service "0.0.9-SNAPSHOT"
+(defproject datomish-user-agent-service "0.0.10-SNAPSHOT"
   :description "A Tofino User Agent Service built on top of Datomish."
   :url "https://github.com/mozilla/datomish-user-agent-service"
   :license {:name "Mozilla Public License Version 2.0"
@@ -7,7 +7,7 @@
                  [org.clojure/clojure "1.8.0"]
                  [org.clojure/core.async "0.2.385"]
                  [jamesmacaulay/cljs-promises "0.1.0"]
-                 [mozilla/datomish "0.3.2"]]
+                 [mozilla/datomish "0.3.5"]]
 
   :min-lein-version "2.6.1"
 
